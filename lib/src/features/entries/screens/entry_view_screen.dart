@@ -8,11 +8,11 @@ import 'package:reflect/src/features/attachments/widgets/entry_photo_gallery.dar
 import 'package:reflect/src/features/entries/models/journal_entry.dart';
 import 'package:reflect/src/features/entries/models/mood.dart';
 import 'package:reflect/src/features/entries/providers/entries_providers.dart';
-import 'package:reflect/src/features/entries/widgets/markdown_lite_text.dart';
+import 'package:reflect/src/features/entries/widgets/markdown_entry_body.dart';
 import 'package:reflect/src/features/timeline/widgets/tag_chip.dart';
 
-/// Read-only entry view with comfortable reading typography and
-/// markdown-lite rendering (**bold**, *italic*, "- " bullets).
+/// Read-only entry view with comfortable reading typography and full
+/// CommonMark rendering (headings, bold/italic, lists, quotes, code, links).
 class EntryViewScreen extends ConsumerWidget {
   const EntryViewScreen({required this.entryId, super.key});
 
@@ -69,7 +69,7 @@ class EntryViewScreen extends ConsumerWidget {
             Text(entry.title, style: AppTextStyles.h2),
             const SizedBox(height: AppSpacing.md),
           ],
-          MarkdownLiteText(text: entry.body, style: readingStyle),
+          MarkdownEntryBody(data: entry.body, baseStyle: readingStyle),
           if (entry.photoIds.isNotEmpty) ...[
             const SizedBox(height: AppSpacing.xl),
             EntryPhotoGallery(photoIds: entry.photoIds),

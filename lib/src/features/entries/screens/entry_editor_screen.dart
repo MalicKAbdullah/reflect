@@ -285,8 +285,10 @@ class _EntryEditorScreenState extends ConsumerState<EntryEditorScreen> {
             decoration: const InputDecoration(
               hintText: 'What is on your mind?',
               helperText:
-                  'Styling shows when reading: **bold**, *italic*, "- " lists',
-              helperMaxLines: 2,
+                  'Full Markdown supported — shows styled when reading '
+                  '(headings, **bold**, *italic*, lists, > quotes, `code`, '
+                  'links)',
+              helperMaxLines: 3,
             ),
           ),
           const SizedBox(height: AppSpacing.lg),

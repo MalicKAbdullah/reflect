@@ -6,8 +6,8 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:reflect/src/features/entries/models/journal_entry.dart';
 import 'package:reflect/src/features/entries/models/mood.dart';
-import 'package:reflect/src/features/entries/services/markdown_lite.dart';
 import 'package:reflect/src/features/stats/services/journal_stats.dart';
+import 'package:reflect/src/features/yearbook/services/markdown_pdf.dart';
 import 'package:reflect/src/features/yearbook/services/pdf_fonts.dart';
 
 /// Everything needed to render one year book. Plain data only, so it can
@@ -18,6 +18,8 @@ final class YearBookRequest {
     required this.year,
     required this.entries,
     required this.fonts,
+    this.photos = const {},
+    this.includePhotos = true,
   });
 
   final int year;
@@ -25,11 +27,20 @@ final class YearBookRequest {
   /// Every journal entry; the service filters to [year] itself.
   final List<JournalEntry> entries;
   final PdfFontBytes fonts;
+
+  /// Decrypted, print-ready JPEG bytes keyed by photo id. Gathered on the
+  /// main isolate (photos are AES-encrypted at rest and only decryptable
+  /// with the in-memory session key) and passed in for embedding here.
+  final Map<String, Uint8List> photos;
+
+  /// When false the book omits photos even if [photos] is populated.
+  final bool includePhotos;
 }
 
 /// "Year in Review" PDF: an A4 book with a cover (entry count, total words,
-/// top moods), the year's entries in chronological order under month
-/// headers — markdown-lite flattened to styled text — and page numbers.
+/// top moods as emoji), the year's entries in chronological order under
+/// month headers — bodies rendered as real markdown, with a small grid of
+/// photos under each entry — and page numbers.
 ///
 /// Layout is pure Dart (package:pdf) and unit-tested without platform
 /// dependencies. From the UI, always call [renderInBackground]; a year of
@@ -40,6 +51,11 @@ abstract final class YearBookPdfService {
   static const PdfColor _ink = PdfColor.fromInt(0xFF1C1B22);
   static const PdfColor _muted = PdfColor.fromInt(0xFF6F6C7A);
   static const PdfColor _line = PdfColor.fromInt(0xFFE6E4EC);
+  static const PdfColor _codeBg = PdfColor.fromInt(0xFFF2F0F7);
+
+  /// At most this many photos are embedded per entry, to keep the PDF and
+  /// peak memory reasonable.
+  static const int maxPhotosPerEntry = 4;
 
   static String suggestedFileName(int year) => 'reflect-yearbook-$year.pdf';
 
@@ -47,6 +63,7 @@ abstract final class YearBookPdfService {
   /// counts; app code should prefer [renderInBackground].
   static pw.Document buildDocument(YearBookRequest request) {
     final fonts = _Fonts(request.fonts);
+    final markdown = MarkdownPdf(_markdownTheme(fonts));
     final entries = request.entries
         .where((e) => e.createdAt.year == request.year)
         .toList()
@@ -64,7 +81,7 @@ abstract final class YearBookPdfService {
         footer: (context) => _footer(context, fonts),
         build: (_) => entries.isEmpty
             ? [_emptyYear(request.year, fonts)]
-            : _body(entries, fonts),
+            : _body(entries, fonts, markdown, request),
       ),
     );
     return doc;
@@ -74,15 +91,24 @@ abstract final class YearBookPdfService {
   static Future<Uint8List> render(YearBookRequest request) =>
       buildDocument(request).save();
 
-  /// Loads fonts (cached) and renders on a background isolate.
+  /// Loads fonts (cached) and renders on a background isolate. [photos]
+  /// must already be decrypted (main-isolate work — see the caller).
   static Future<Uint8List> renderInBackground({
     required int year,
     required List<JournalEntry> entries,
+    Map<String, Uint8List> photos = const {},
+    bool includePhotos = true,
   }) async {
     final fonts = await PdfFontLoader.load();
     return compute(
       render,
-      YearBookRequest(year: year, entries: entries, fonts: fonts),
+      YearBookRequest(
+        year: year,
+        entries: entries,
+        fonts: fonts,
+        photos: photos,
+        includePhotos: includePhotos,
+      ),
     );
   }
 
@@ -110,6 +136,7 @@ abstract final class YearBookPdfService {
             'REFLECT · YEAR IN REVIEW',
             style: pw.TextStyle(
               font: fonts.semiBold,
+              fontFallback: fonts.fallback,
               fontSize: 11,
               letterSpacing: 2,
               color: _muted,
@@ -139,6 +166,7 @@ abstract final class YearBookPdfService {
               'MOST FELT',
               style: pw.TextStyle(
                 font: fonts.semiBold,
+                fontFallback: fonts.fallback,
                 fontSize: 9,
                 letterSpacing: 1.5,
                 color: _muted,
@@ -161,6 +189,7 @@ abstract final class YearBookPdfService {
             'Written for you, from your private journal.',
             style: pw.TextStyle(
               font: fonts.regular,
+              fontFallback: fonts.fallback,
               fontSize: 10,
               color: _muted,
             ),
@@ -199,7 +228,12 @@ abstract final class YearBookPdfService {
     );
   }
 
-  static List<pw.Widget> _body(List<JournalEntry> entries, _Fonts fonts) {
+  static List<pw.Widget> _body(
+    List<JournalEntry> entries,
+    _Fonts fonts,
+    MarkdownPdf markdown,
+    YearBookRequest request,
+  ) {
     final monthName = DateFormat.MMMM();
     final dayName = DateFormat('EEEE, MMMM d');
     final widgets = <pw.Widget>[];
@@ -218,6 +252,7 @@ abstract final class YearBookPdfService {
                   monthName.format(entry.createdAt),
                   style: pw.TextStyle(
                     font: fonts.bold,
+                    fontFallback: fonts.fallback,
                     fontSize: 17,
                     color: _accent,
                   ),
@@ -229,7 +264,7 @@ abstract final class YearBookPdfService {
           ),
         );
       }
-      widgets.add(_entryBlock(entry, fonts, dayName));
+      widgets.add(_entryBlock(entry, fonts, dayName, markdown, request));
     }
     return widgets;
   }
@@ -238,6 +273,8 @@ abstract final class YearBookPdfService {
     JournalEntry entry,
     _Fonts fonts,
     DateFormat dayName,
+    MarkdownPdf markdown,
+    YearBookRequest request,
   ) {
     return pw.Padding(
       padding: const pw.EdgeInsets.only(bottom: 16),
@@ -251,6 +288,7 @@ abstract final class YearBookPdfService {
                 dayName.format(entry.createdAt),
                 style: pw.TextStyle(
                   font: fonts.semiBold,
+                  fontFallback: fonts.fallback,
                   fontSize: 9,
                   color: _muted,
                 ),
@@ -266,74 +304,61 @@ abstract final class YearBookPdfService {
                 entry.title,
                 style: pw.TextStyle(
                   font: fonts.bold,
+                  fontFallback: fonts.fallback,
                   fontSize: 13,
                   color: _ink,
                 ),
               ),
             ),
           pw.SizedBox(height: 4),
-          ..._markdownLite(entry.body, fonts),
+          ...markdown.build(entry.body),
+          ..._photos(entry, request),
         ],
       ),
     );
   }
 
-  /// Flattens the app's markdown-lite (bold / italic / bullets) into
-  /// styled PDF text. Inter ships no italic face, so italic runs render in
-  /// the semi-bold weight — distinct from both regular and bold.
-  static List<pw.Widget> _markdownLite(String body, _Fonts fonts) {
-    pw.TextStyle styleFor(MdSpan span) => pw.TextStyle(
-          font: span.bold
-              ? fonts.bold
-              : (span.italic ? fonts.semiBold : fonts.regular),
-          fontSize: 10.5,
-          lineSpacing: 3,
-          color: _ink,
-        );
-
-    final widgets = <pw.Widget>[];
-    for (final line in MarkdownLite.parse(body)) {
-      final text = pw.RichText(
-        text: pw.TextSpan(
-          children: [
-            for (final span in line.spans)
-              pw.TextSpan(text: span.text, style: styleFor(span)),
-          ],
-        ),
-      );
-      if (line.bullet) {
-        widgets.add(
-          pw.Padding(
-            padding: const pw.EdgeInsets.only(left: 10, bottom: 2),
-            child: pw.Row(
-              crossAxisAlignment: pw.CrossAxisAlignment.start,
-              children: [
-                pw.Text(
-                  '•  ',
-                  style: pw.TextStyle(
-                    font: fonts.regular,
-                    fontSize: 10.5,
-                    color: _accent,
-                  ),
-                ),
-                pw.Expanded(child: text),
-              ],
-            ),
-          ),
-        );
-      } else {
-        widgets.add(
-          pw.Padding(
-            padding: const pw.EdgeInsets.only(bottom: 2),
-            child: text,
-          ),
-        );
-      }
+  /// A small row of photo thumbnails under an entry (capped, decrypted
+  /// bytes passed in via the request).
+  static List<pw.Widget> _photos(JournalEntry entry, YearBookRequest request) {
+    if (!request.includePhotos || request.photos.isEmpty) return const [];
+    final images = <pw.MemoryImage>[];
+    for (final id in entry.photoIds.take(maxPhotosPerEntry)) {
+      final bytes = request.photos[id];
+      if (bytes != null) images.add(pw.MemoryImage(bytes));
     }
-    return widgets;
+    if (images.isEmpty) return const [];
+    return [
+      pw.SizedBox(height: 6),
+      pw.Wrap(
+        spacing: 6,
+        runSpacing: 6,
+        children: [
+          for (final image in images)
+            pw.ClipRRect(
+              horizontalRadius: 4,
+              verticalRadius: 4,
+              child: pw.Image(image, height: 96, fit: pw.BoxFit.cover),
+            ),
+        ],
+      ),
+    ];
   }
 
   // ── Building blocks ──────────────────────────────────────────────────
+
+  static MarkdownPdfTheme _markdownTheme(_Fonts fonts) => MarkdownPdfTheme(
+        regular: fonts.regular,
+        semiBold: fonts.semiBold,
+        bold: fonts.bold,
+        mono: fonts.mono,
+        fallback: fonts.fallback,
+        ink: _ink,
+        muted: _muted,
+        accent: _accent,
+        line: _line,
+        codeBackground: _codeBg,
+      );
 
   static pw.PageTheme _pageTheme(_Fonts fonts) => pw.PageTheme(
         pageFormat: PdfPageFormat.a4,
@@ -343,6 +368,7 @@ abstract final class YearBookPdfService {
           bold: fonts.bold,
           italic: fonts.semiBold,
           boldItalic: fonts.bold,
+          fontFallback: fonts.fallback,
         ),
       );
 
@@ -391,12 +417,10 @@ abstract final class YearBookPdfService {
         ],
       );
 
-  /// Mood as a colored dot plus its label (the embedded text font has no
-  /// emoji glyphs, so the app's mood colors carry the feeling instead).
+  /// Mood as its emoji on a soft tint of the mood color, with an optional
+  /// count. The bundled Noto emoji fallback renders the glyph (monochrome).
   static pw.Widget _moodBadge(int mood, _Fonts fonts, {int? count}) {
     final color = PdfColor.fromInt(Mood.color(mood).toARGB32());
-    final label =
-        count == null ? Mood.label(mood) : '${Mood.label(mood)} ×$count';
     return pw.Container(
       padding: const pw.EdgeInsets.symmetric(horizontal: 7, vertical: 3),
       decoration: pw.BoxDecoration(
@@ -406,20 +430,26 @@ abstract final class YearBookPdfService {
       child: pw.Row(
         mainAxisSize: pw.MainAxisSize.min,
         children: [
-          pw.Container(
-            width: 6,
-            height: 6,
-            decoration: pw.BoxDecoration(
-              color: color,
-              shape: pw.BoxShape.circle,
+          pw.Text(
+            Mood.emoji(mood),
+            style: pw.TextStyle(
+              font: fonts.emoji,
+              fontFallback: fonts.fallback,
+              fontSize: 11,
+              color: _ink,
             ),
           ),
-          pw.SizedBox(width: 5),
-          pw.Text(
-            label,
-            style:
-                pw.TextStyle(font: fonts.semiBold, fontSize: 8.5, color: _ink),
-          ),
+          if (count != null) ...[
+            pw.SizedBox(width: 5),
+            pw.Text(
+              '×$count',
+              style: pw.TextStyle(
+                font: fonts.semiBold,
+                fontSize: 8.5,
+                color: _ink,
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -436,16 +466,25 @@ abstract final class YearBookPdfService {
   }
 }
 
-/// Parsed `pw.Font`s built once per render.
+/// Parsed `pw.Font`s built once per render. Courier (a built-in PDF font)
+/// provides a monospace face for code; the emoji face is used both directly
+/// (mood badges) and as a fallback for any emoji in user text.
 final class _Fonts {
   _Fonts(PdfFontBytes bytes)
       : regular = pw.Font.ttf(_data(bytes.regular)),
         semiBold = pw.Font.ttf(_data(bytes.semiBold)),
-        bold = pw.Font.ttf(_data(bytes.bold));
+        bold = pw.Font.ttf(_data(bytes.bold)),
+        emoji = pw.Font.ttf(_data(bytes.emoji)),
+        mono = pw.Font.courier();
 
   final pw.Font regular;
   final pw.Font semiBold;
   final pw.Font bold;
+  final pw.Font emoji;
+  final pw.Font mono;
+
+  /// Fonts consulted for glyphs a primary face lacks — chiefly emoji.
+  List<pw.Font> get fallback => [emoji];
 
   static ByteData _data(Uint8List bytes) =>
       bytes.buffer.asByteData(bytes.offsetInBytes, bytes.lengthInBytes);

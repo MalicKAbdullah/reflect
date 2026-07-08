@@ -23,7 +23,9 @@ Reflect is a quiet place to write, remember, and notice patterns over time — b
 
 **Write freely**
 - Simple, distraction-free entries with an optional title and mood
-- **Markdown-lite** formatting — bold, italics, and bullet lists
+- **Full Markdown** formatting — headings, bold, italics, ordered & unordered
+  lists, task lists, blockquotes, inline & fenced code, links, and rules.
+  The editor stays plain-text Markdown source; styling shows when reading.
 - Gentle daily reminder and rotating writing prompts
 
 **Remember more**
@@ -34,7 +36,10 @@ Reflect is a quiet place to write, remember, and notice patterns over time — b
 **See your patterns**
 - Mood trends, distributions, and writing streaks
 - Writing goals to build the habit
-- Export a beautiful **Year-in-Review PDF**
+- Export a beautiful **Year-in-Review PDF** — full Markdown bodies, mood
+  **emoji**, and your **photos** embedded (toggle on export, up to 4 per
+  entry). PDF emoji render monochrome (from a bundled Noto emoji font); the
+  same year book renders identically offline on any device.
 
 **Locked down**
 - **PIN + optional biometric unlock**, with auto-lock when you leave the app

@@ -1,6 +1,6 @@
 name: reflect
 description: Reflect — an encrypted, offline-first journal with full-text search and mood analytics.
-version: 1.2.0+3
+version: 1.3.0+4
 publish_to: none
 
 environment:
@@ -44,6 +44,12 @@ dependencies:
   # Year in Review PDF export
   pdf: ^3.12.0
 
+  # Full CommonMark rendering: MarkdownBody in the entry view, the raw
+  # markdown AST for the PDF exporter, and tappable links.
+  flutter_markdown: ^0.7.4
+  markdown: ^7.2.1
+  url_launcher: ^6.3.0
+
   # Core packages
   core_crypto:
     git:
@@ -86,3 +92,8 @@ flutter_launcher_icons:
 
 flutter:
   uses-material-design: true
+
+  assets:
+    # Monochrome emoji font, used only as a PDF font fallback and loaded as
+    # raw bytes (rootBundle) — never registered as a UI font family.
+    - assets/fonts/NotoEmoji-Regular.ttf

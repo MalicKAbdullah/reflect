@@ -13,13 +13,27 @@ abstract final class PhotoCodec {
   static const int maxDimension = 1600;
   static const int jpegQuality = 80;
 
+  /// Longest-edge target for photos embedded in the year book PDF; smaller
+  /// than storage size to keep the document and peak memory reasonable.
+  static const int printDimension = 1000;
+  static const int printQuality = 75;
+
   /// Returns JPEG bytes ready to encrypt, or null when [bytes] is not a
   /// decodable image.
   static Future<Uint8List?> prepare(Uint8List bytes) =>
       compute(prepareSync, bytes);
 
+  /// Downscales an already-decoded JPEG for print in a background isolate.
+  /// Returns the original bytes unchanged if it cannot be re-encoded.
+  static Future<Uint8List> prepareForPrint(Uint8List bytes) =>
+      compute(prepareForPrintSync, bytes);
+
   /// Synchronous worker — exposed for tests.
-  static Uint8List? prepareSync(Uint8List bytes) {
+  static Uint8List? prepareSync(
+    Uint8List bytes, {
+    int longEdge = maxDimension,
+    int quality = jpegQuality,
+  }) {
     img.Image? decoded;
     try {
       decoded = img.decodeImage(bytes);
@@ -29,11 +43,22 @@ abstract final class PhotoCodec {
     if (decoded == null) return null;
 
     var photo = img.bakeOrientation(decoded);
-    if (photo.width > maxDimension || photo.height > maxDimension) {
+    if (photo.width > longEdge || photo.height > longEdge) {
       photo = photo.width >= photo.height
-          ? img.copyResize(photo, width: maxDimension)
-          : img.copyResize(photo, height: maxDimension);
+          ? img.copyResize(photo, width: longEdge)
+          : img.copyResize(photo, height: longEdge);
     }
-    return Uint8List.fromList(img.encodeJpg(photo, quality: jpegQuality));
+    return Uint8List.fromList(img.encodeJpg(photo, quality: quality));
+  }
+
+  /// Print-downscale worker — exposed for tests. Never returns null: on any
+  /// failure the caller keeps the original bytes.
+  static Uint8List prepareForPrintSync(Uint8List bytes) {
+    final out = prepareSync(
+      bytes,
+      longEdge: printDimension,
+      quality: printQuality,
+    );
+    return out ?? bytes;
   }
 }

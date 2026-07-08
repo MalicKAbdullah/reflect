@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:reflect/src/features/entries/models/journal_entry.dart';
@@ -15,13 +16,45 @@ class _FakeEntriesNotifier extends EntriesNotifier {
   Future<List<JournalEntry>> build() async => _entries;
 }
 
+/// One text run with the style it effectively resolves to (parent styles
+/// merged into children, the way rendering inherits them).
+class _Run {
+  _Run(this.text, this.style);
+  final String text;
+  final TextStyle style;
+}
+
+/// Collects every leaf text run across all RichText widgets, resolving the
+/// effective (inherited) style for each.
+List<_Run> _allRuns(WidgetTester tester) {
+  final runs = <_Run>[];
+  for (final rich in tester.widgetList<RichText>(find.byType(RichText))) {
+    void visit(InlineSpan span, TextStyle inherited) {
+      if (span is! TextSpan) return;
+      final merged =
+          span.style == null ? inherited : inherited.merge(span.style);
+      if (span.text != null && span.text!.isNotEmpty) {
+        runs.add(_Run(span.text!, merged));
+      }
+      for (final child in span.children ?? const <InlineSpan>[]) {
+        visit(child, merged);
+      }
+    }
+
+    visit(rich.text, const TextStyle());
+  }
+  return runs;
+}
+
 void main() {
   final entry = JournalEntry(
     id: 'e1',
     title: 'A good day',
-    body: 'Morning walk was **great** and *calm*.\n'
+    body: '# Big heading\n\n'
+        'Morning walk was **great** and *calm*.\n\n'
         '- coffee outside\n'
-        '- called mum',
+        '- called mum\n\n'
+        'Try `flutter test` and visit [docs](https://example.com).',
     mood: 5,
     tags: const ['grateful', 'outside'],
     createdAt: DateTime(2026, 7, 3, 9, 30),
@@ -42,44 +75,53 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testWidgets('renders title, mood, tags and markdown-lite body',
+  testWidgets('renders full markdown: heading, bold, list, code and link',
       (tester) async {
     await pumpView(tester);
 
-    expect(find.text('A good day'), findsOneWidget);
+    expect(find.byType(MarkdownBody), findsOneWidget);
+    expect(find.text('A good day'), findsOneWidget); // title
     expect(find.text('Great'), findsOneWidget); // mood label chip
     expect(find.text('😄'), findsOneWidget);
     expect(find.text('grateful'), findsOneWidget);
-    expect(find.text('outside'), findsOneWidget);
 
-    // Markdown markers are consumed, not shown literally.
+    // Raw markdown markers are consumed, not shown literally.
     expect(find.textContaining('**'), findsNothing);
+    expect(find.textContaining('# Big'), findsNothing);
 
-    // Bold and italic spans exist with the right styles.
-    final richTexts =
-        tester.widgetList<RichText>(find.byType(RichText)).toList();
-    var foundBold = false;
-    var foundItalic = false;
-    for (final rich in richTexts) {
-      rich.text.visitChildren((span) {
-        if (span is TextSpan) {
-          if (span.text == 'great' &&
-              span.style?.fontWeight == FontWeight.w700) {
-            foundBold = true;
-          }
-          if (span.text == 'calm' &&
-              span.style?.fontStyle == FontStyle.italic) {
-            foundItalic = true;
-          }
-        }
-        return true;
-      });
-    }
-    expect(foundBold, isTrue, reason: 'bold run should be rendered');
-    expect(foundItalic, isTrue, reason: 'italic run should be rendered');
+    final runs = _allRuns(tester);
+    bool has(bool Function(_Run) test) => runs.any(test);
 
-    // Bullet lines render with a bullet glyph.
-    expect(find.text('•'), findsNWidgets(2));
+    // Bold run.
+    expect(
+      has((r) => r.text == 'great' && r.style.fontWeight == FontWeight.w700),
+      isTrue,
+      reason: 'bold run should render',
+    );
+    // Italic run.
+    expect(
+      has((r) => r.text == 'calm' && r.style.fontStyle == FontStyle.italic),
+      isTrue,
+      reason: 'italic run should render',
+    );
+    // Heading text present.
+    expect(has((r) => r.text == 'Big heading'), isTrue);
+    // Inline code, monospace.
+    expect(
+      has((r) => r.text == 'flutter test' && r.style.fontFamily == 'monospace'),
+      isTrue,
+      reason: 'inline code should render monospace',
+    );
+    // Link, underlined.
+    expect(
+      has((r) =>
+          r.text == 'docs' &&
+          r.style.decoration == TextDecoration.underline),
+      isTrue,
+      reason: 'link should render underlined',
+    );
+    // Bullets rendered.
+    expect(find.textContaining('coffee outside'), findsOneWidget);
   });
 
   testWidgets('edit action is available', (tester) async {

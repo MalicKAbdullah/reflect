@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:core_theme/core_theme.dart';
 import 'package:flutter/material.dart';
@@ -14,6 +15,9 @@ import 'package:reflect/src/features/settings/providers/settings_providers.dart'
 import 'package:reflect/src/features/entries/providers/entries_providers.dart';
 import 'package:reflect/src/features/reminders/providers/reminder_providers.dart';
 import 'package:reflect/src/features/yearbook/services/year_book_pdf_service.dart';
+import 'package:reflect/src/features/yearbook/services/year_book_photo_loader.dart';
+import 'package:reflect/src/features/yearbook/widgets/year_book_export_sheet.dart';
+import 'package:reflect/src/core/di.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:reflect/src/features/settings/widgets/goal_picker_sheet.dart';
 import 'package:reflect/src/features/goals/providers/goal_providers.dart';
@@ -180,32 +184,13 @@ class SettingsScreen extends ConsumerWidget {
     }
     final years = counts.keys.toList()..sort((a, b) => b.compareTo(a));
 
-    final year = await showModalBottomSheet<int>(
+    final choice = await showYearBookExportSheet(
       context: context,
-      builder: (context) => SafeArea(
-        child: ListView(
-          shrinkWrap: true,
-          children: [
-            Padding(
-              padding: const EdgeInsets.all(AppSpacing.md),
-              child: Text(
-                'Pick a year',
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
-            ),
-            for (final y in years)
-              ListTile(
-                title: Text('$y'),
-                subtitle: Text(
-                  '${counts[y]} ${counts[y] == 1 ? 'entry' : 'entries'}',
-                ),
-                onTap: () => Navigator.of(context).pop(y),
-              ),
-          ],
-        ),
-      ),
+      years: years,
+      counts: counts,
     );
-    if (year == null || !context.mounted) return;
+    if (choice == null || !context.mounted) return;
+    final year = choice.year;
 
     // Simple progress dialog while the PDF renders in an isolate.
     unawaited(showDialog<void>(
@@ -223,9 +208,22 @@ class SettingsScreen extends ConsumerWidget {
     ));
 
     try {
+      // Photos are AES-encrypted on disk; decrypt them here (main isolate,
+      // with the session key) before the render runs off-thread.
+      final photos = choice.includePhotos
+          ? await loadYearBookPhotos(
+              service: ref.read(attachmentServiceProvider),
+              key: ref.read(sessionProvider.notifier).dataKey,
+              entries: entries,
+              year: year,
+              maxPerEntry: YearBookPdfService.maxPhotosPerEntry,
+            )
+          : const <String, Uint8List>{};
       final bytes = await YearBookPdfService.renderInBackground(
         year: year,
         entries: entries,
+        photos: photos,
+        includePhotos: choice.includePhotos,
       );
       final dir = await getTemporaryDirectory();
       final file = File(
