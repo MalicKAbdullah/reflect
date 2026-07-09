@@ -242,43 +242,52 @@ abstract final class YearBookPdfService {
     for (final entry in entries) {
       if (entry.createdAt.month != currentMonth) {
         currentMonth = entry.createdAt.month;
-        widgets.add(
-          pw.Padding(
-            padding: const pw.EdgeInsets.only(top: 18, bottom: 10),
-            child: pw.Row(
-              crossAxisAlignment: pw.CrossAxisAlignment.center,
-              children: [
-                pw.Text(
-                  monthName.format(entry.createdAt),
-                  style: pw.TextStyle(
-                    font: fonts.bold,
-                    fontFallback: fonts.fallback,
-                    fontSize: 17,
-                    color: _accent,
-                  ),
-                ),
-                pw.SizedBox(width: 10),
-                pw.Expanded(child: pw.Container(height: 1, color: _line)),
-              ],
-            ),
-          ),
-        );
+        if (widgets.isNotEmpty) widgets.add(pw.SizedBox(height: 10));
+        widgets
+          ..add(_monthHeader(monthName.format(entry.createdAt), fonts))
+          ..add(pw.SizedBox(height: 12));
+      } else {
+        // Breathing room and a subtle divider between consecutive entries.
+        widgets
+          ..add(pw.SizedBox(height: 14))
+          ..add(pw.Container(height: 0.6, color: _line))
+          ..add(pw.SizedBox(height: 14));
       }
-      widgets.add(_entryBlock(entry, fonts, dayName, markdown, request));
+
+      widgets
+        ..add(_entryHeader(entry, fonts, dayName))
+        ..add(pw.SizedBox(height: 6))
+        ..addAll(markdown.build(entry.body))
+        ..addAll(_photos(entry, request));
     }
     return widgets;
   }
 
-  static pw.Widget _entryBlock(
+  static pw.Widget _monthHeader(String name, _Fonts fonts) => pw.Row(
+        crossAxisAlignment: pw.CrossAxisAlignment.center,
+        children: [
+          pw.Text(
+            name,
+            style: pw.TextStyle(
+              font: fonts.bold,
+              fontFallback: fonts.fallback,
+              fontSize: 17,
+              color: _accent,
+            ),
+          ),
+          pw.SizedBox(width: 10),
+          pw.Expanded(child: pw.Container(height: 1, color: _line)),
+        ],
+      );
+
+  /// Date + mood + title for one entry: a short column that stays together;
+  /// the markdown body flows separately after it.
+  static pw.Widget _entryHeader(
     JournalEntry entry,
     _Fonts fonts,
     DateFormat dayName,
-    MarkdownPdf markdown,
-    YearBookRequest request,
-  ) {
-    return pw.Padding(
-      padding: const pw.EdgeInsets.only(bottom: 16),
-      child: pw.Column(
+  ) =>
+      pw.Column(
         crossAxisAlignment: pw.CrossAxisAlignment.start,
         children: [
           pw.Row(
@@ -297,29 +306,24 @@ abstract final class YearBookPdfService {
               _moodBadge(entry.mood, fonts),
             ],
           ),
-          if (entry.title.isNotEmpty)
-            pw.Padding(
-              padding: const pw.EdgeInsets.only(top: 4),
-              child: pw.Text(
-                entry.title,
-                style: pw.TextStyle(
-                  font: fonts.bold,
-                  fontFallback: fonts.fallback,
-                  fontSize: 13,
-                  color: _ink,
-                ),
+          if (entry.title.isNotEmpty) ...[
+            pw.SizedBox(height: 4),
+            pw.Text(
+              entry.title,
+              style: pw.TextStyle(
+                font: fonts.bold,
+                fontFallback: fonts.fallback,
+                fontSize: 13,
+                color: _ink,
               ),
             ),
-          pw.SizedBox(height: 4),
-          ...markdown.build(entry.body),
-          ..._photos(entry, request),
+          ],
         ],
-      ),
-    );
-  }
+      );
 
-  /// A small row of photo thumbnails under an entry (capped, decrypted
-  /// bytes passed in via the request).
+  /// A row of photo thumbnails under an entry (capped, decrypted bytes
+  /// passed in via the request). Each is bounded to a 110pt box and wraps to
+  /// the next line so photos never overflow the page; [pw.Wrap] spans pages.
   static List<pw.Widget> _photos(JournalEntry entry, YearBookRequest request) {
     if (!request.includePhotos || request.photos.isEmpty) return const [];
     final images = <pw.MemoryImage>[];
@@ -329,7 +333,7 @@ abstract final class YearBookPdfService {
     }
     if (images.isEmpty) return const [];
     return [
-      pw.SizedBox(height: 6),
+      pw.SizedBox(height: 8),
       pw.Wrap(
         spacing: 6,
         runSpacing: 6,
@@ -338,7 +342,12 @@ abstract final class YearBookPdfService {
             pw.ClipRRect(
               horizontalRadius: 4,
               verticalRadius: 4,
-              child: pw.Image(image, height: 96, fit: pw.BoxFit.cover),
+              child: pw.Image(
+                image,
+                width: 110,
+                height: 110,
+                fit: pw.BoxFit.cover,
+              ),
             ),
         ],
       ),

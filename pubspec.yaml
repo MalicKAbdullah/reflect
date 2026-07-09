@@ -1,6 +1,6 @@
 name: reflect
 description: Reflect — an encrypted, offline-first journal with full-text search and mood analytics.
-version: 1.3.0+4
+version: 1.3.1+5
 publish_to: none
 
 environment:
@@ -44,9 +44,9 @@ dependencies:
   # Year in Review PDF export
   pdf: ^3.12.0
 
-  # Full CommonMark rendering: MarkdownBody in the entry view, the raw
-  # markdown AST for the PDF exporter, and tappable links.
-  flutter_markdown: ^0.7.4
+  # Full CommonMark rendering: the markdown AST is rendered to Flutter
+  # widgets (entry view) and to package:pdf widgets (year book) by our own
+  # renderers, so both agree; url_launcher opens tappable links.
   markdown: ^7.2.1
   url_launcher: ^6.3.0
 

@@ -21,6 +21,7 @@ final class MarkdownPdfTheme {
     required this.codeBackground,
     this.baseFontSize = 10.5,
     this.lineSpacing = 3,
+    this.blockGap = 5,
   });
 
   final pw.Font regular;
@@ -38,14 +39,22 @@ final class MarkdownPdfTheme {
   final PdfColor codeBackground;
   final double baseFontSize;
   final double lineSpacing;
+
+  /// Vertical space inserted between consecutive block widgets.
+  final double blockGap;
 }
 
-/// Renders CommonMark (GitHub-flavored) into `package:pdf` widgets.
+/// Renders CommonMark (GitHub-flavored) into a FLAT list of `package:pdf`
+/// widgets suitable for a [pw.MultiPage] `build` list.
 ///
-/// Block nodes map to sized/styled widgets (headings, lists, blockquotes,
-/// fenced code, rules); inline nodes map to styled `pw.TextSpan`s (strong,
-/// emphasis, inline code, links, strikethrough). It never throws on odd
-/// input — parse failures degrade to a plain paragraph.
+/// Every widget returned is either short (headings, list items, rules) or a
+/// [pw.RichText] with `overflow: TextOverflow.span` — so a long paragraph
+/// paginates across pages instead of overflowing. Nothing is wrapped in a
+/// single non-breakable container, which is what previously made tall
+/// entries collide with the footer and the next entry.
+///
+/// It never throws on odd input — parse failures degrade to a plain
+/// paragraph.
 final class MarkdownPdf {
   const MarkdownPdf(this.theme);
 
@@ -60,6 +69,8 @@ final class MarkdownPdf {
     'h6': 10.5,
   };
 
+  /// A flat list of block widgets with [MarkdownPdfTheme.blockGap] spacing
+  /// interleaved between them. Safe to spread directly into a MultiPage.
   List<pw.Widget> build(String source) {
     if (source.trim().isEmpty) return const [];
     List<md.Node> nodes;
@@ -72,11 +83,17 @@ final class MarkdownPdf {
       // Robustness: never let malformed markdown crash a year book.
       return [_paragraph(source)];
     }
-    final widgets = <pw.Widget>[];
+    final blocks = <pw.Widget>[];
     for (final node in nodes) {
-      _appendBlock(node, widgets);
+      _appendBlock(node, blocks);
     }
-    return widgets;
+    // Interleave consistent spacing so nothing ever overlaps.
+    final out = <pw.Widget>[];
+    for (var i = 0; i < blocks.length; i++) {
+      if (i > 0) out.add(pw.SizedBox(height: theme.blockGap));
+      out.add(blocks[i]);
+    }
+    return out;
   }
 
   // ── Block nodes ────────────────────────────────────────────────────────
@@ -98,11 +115,11 @@ final class MarkdownPdf {
       case 'h6':
         out.add(_heading(node));
       case 'p':
-        out.add(_block(_inline(node.children, _base())));
+        out.add(_richBlock(_inline(node.children, _base())));
       case 'ul':
-        _appendList(node, out, ordered: false);
+        out.add(_list(node, ordered: false));
       case 'ol':
-        _appendList(node, out, ordered: true);
+        out.add(_list(node, ordered: true));
       case 'blockquote':
         out.add(_blockquote(node));
       case 'pre':
@@ -124,33 +141,38 @@ final class MarkdownPdf {
 
   pw.Widget _heading(md.Element node) {
     final size = _headingSizes[node.tag] ?? theme.baseFontSize;
-    return pw.Padding(
-      padding: const pw.EdgeInsets.only(top: 6, bottom: 3),
-      child: pw.RichText(
-        text: pw.TextSpan(
-          children: _inline(
-            node.children,
-            pw.TextStyle(
-              font: theme.bold,
-              fontFallback: theme.fallback,
-              fontSize: size,
-              color: theme.ink,
-              lineSpacing: theme.lineSpacing,
-            ),
+    return pw.RichText(
+      overflow: pw.TextOverflow.span,
+      text: pw.TextSpan(
+        children: _inline(
+          node.children,
+          pw.TextStyle(
+            font: theme.bold,
+            fontFallback: theme.fallback,
+            fontSize: size,
+            color: theme.ink,
+            lineSpacing: theme.lineSpacing,
           ),
         ),
       ),
     );
   }
 
-  void _appendList(md.Element node, List<pw.Widget> out, {required bool ordered}) {
+  /// A whole markdown list as ONE vertical column. A vertical column is a
+  /// spanning widget, so a long list paginates between its items rather than
+  /// overflowing.
+  pw.Widget _list(md.Element node, {required bool ordered}) {
+    final items = <pw.Widget>[];
     var index = 1;
-    for (final item in node.children ?? const <md.Node>[]) {
-      if (item is! md.Element) continue;
-      final marker = ordered ? '$index.' : '•';
-      out.add(_listItem(item, marker));
+    for (final child in node.children ?? const <md.Node>[]) {
+      if (child is! md.Element) continue;
+      items.add(_listItem(child, ordered ? '$index.' : '•'));
       index++;
     }
+    return pw.Column(
+      crossAxisAlignment: pw.CrossAxisAlignment.start,
+      children: items,
+    );
   }
 
   pw.Widget _listItem(md.Element item, String marker) {
@@ -174,7 +196,7 @@ final class MarkdownPdf {
       _appendBlock(block, nested);
     }
     return pw.Padding(
-      padding: const pw.EdgeInsets.only(left: 8, bottom: 2),
+      padding: const pw.EdgeInsets.only(left: 8, bottom: 3),
       child: pw.Row(
         crossAxisAlignment: pw.CrossAxisAlignment.start,
         children: [
@@ -196,11 +218,13 @@ final class MarkdownPdf {
               children: [
                 if (inlineChildren.isNotEmpty)
                   pw.RichText(
-                    text: pw.TextSpan(
-                      children: _inline(inlineChildren, _base()),
-                    ),
+                    overflow: pw.TextOverflow.span,
+                    text: pw.TextSpan(children: _inline(inlineChildren, _base())),
                   ),
-                ...nested,
+                for (final widget in nested) ...[
+                  if (widget != nested.first) pw.SizedBox(height: theme.blockGap),
+                  widget,
+                ],
               ],
             ),
           ),
@@ -214,15 +238,19 @@ final class MarkdownPdf {
     for (final child in node.children ?? const <md.Node>[]) {
       _appendBlock(child, inner);
     }
+    final children = <pw.Widget>[];
+    for (var i = 0; i < inner.length; i++) {
+      if (i > 0) children.add(pw.SizedBox(height: theme.blockGap));
+      children.add(inner[i]);
+    }
     return pw.Container(
-      margin: const pw.EdgeInsets.only(bottom: 3),
-      padding: const pw.EdgeInsets.only(left: 10),
+      padding: const pw.EdgeInsets.only(left: 10, top: 2, bottom: 2),
       decoration: pw.BoxDecoration(
         border: pw.Border(left: pw.BorderSide(color: theme.accent, width: 2)),
       ),
       child: pw.Column(
         crossAxisAlignment: pw.CrossAxisAlignment.start,
-        children: inner.isEmpty ? [_paragraph(node.textContent.trim())] : inner,
+        children: children.isEmpty ? [_paragraph(node.textContent.trim())] : children,
       ),
     );
   }
@@ -231,38 +259,35 @@ final class MarkdownPdf {
     final code = node.textContent.replaceAll(RegExp(r'\n$'), '');
     return pw.Container(
       width: double.infinity,
-      margin: const pw.EdgeInsets.only(bottom: 4, top: 2),
       padding: const pw.EdgeInsets.all(8),
       decoration: pw.BoxDecoration(
         color: theme.codeBackground,
         borderRadius: pw.BorderRadius.circular(4),
       ),
-      child: pw.Text(
-        code,
-        style: pw.TextStyle(
-          font: theme.mono,
-          fontFallback: [theme.regular, ...theme.fallback],
-          fontSize: theme.baseFontSize - 1,
-          color: theme.ink,
-          lineSpacing: theme.lineSpacing,
+      child: pw.RichText(
+        overflow: pw.TextOverflow.span,
+        text: pw.TextSpan(
+          text: code,
+          style: pw.TextStyle(
+            font: theme.mono,
+            fontFallback: [theme.regular, ...theme.fallback],
+            fontSize: theme.baseFontSize - 1,
+            color: theme.ink,
+            lineSpacing: theme.lineSpacing,
+          ),
         ),
       ),
     );
   }
 
-  pw.Widget _rule() => pw.Container(
-        margin: const pw.EdgeInsets.symmetric(vertical: 6),
-        height: 1,
-        color: theme.line,
-      );
+  pw.Widget _rule() => pw.Container(height: 1, color: theme.line);
 
-  pw.Widget _paragraph(String text) => _block(
-        [pw.TextSpan(text: text, style: _base())],
-      );
+  pw.Widget _paragraph(String text) =>
+      _richBlock([pw.TextSpan(text: text, style: _base())]);
 
-  pw.Widget _block(List<pw.InlineSpan> spans) => pw.Padding(
-        padding: const pw.EdgeInsets.only(bottom: 3),
-        child: pw.RichText(text: pw.TextSpan(children: spans)),
+  pw.Widget _richBlock(List<pw.InlineSpan> spans) => pw.RichText(
+        overflow: pw.TextOverflow.span,
+        text: pw.TextSpan(children: spans),
       );
 
   // ── Inline nodes ─────────────────────────────────────────────────────

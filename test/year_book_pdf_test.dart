@@ -278,4 +278,98 @@ void main() {
       'reflect-yearbook-2025.pdf',
     );
   });
+
+  test('a single very long entry spans pages instead of overflowing', () {
+    // A body taller than one page must paginate cleanly (no throw). Before
+    // the fix the whole entry was one non-breakable block and overflowed.
+    final longBody = List.filled(
+      120,
+      'This is a long reflective sentence that keeps going and going. ',
+    ).join();
+    final pages = pageCount(
+      YearBookRequest(
+        year: 2025,
+        entries: [
+          entry('long', DateTime(2025, 3, 3),
+              title: 'A very full day', body: longBody),
+        ],
+        fonts: loadTestFonts(),
+      ),
+    );
+    expect(pages, greaterThan(2),
+        reason: 'a long body should flow across multiple content pages');
+  });
+
+  test('renders a rich multi-entry sample book to build/yearbook_sample.pdf',
+      () async {
+    // Long paragraph reused to push entries past a single page and force
+    // pagination through the middle of a body.
+    final longParagraph = List.filled(
+      36,
+      'The afternoon light moved slowly across the desk as I wrote. ',
+    ).join();
+
+    const richBody = '# The morning ☀️\n\n'
+        'A **bold** claim, an *italic* aside, some ~~struck~~ text, and a '
+        'bit of `inline code` too. Visit [the docs](https://example.com).\n\n'
+        '## A list of things\n\n'
+        '- first thing\n'
+        '- second thing with **emphasis**\n'
+        '- third thing\n\n'
+        '1. step one\n'
+        '2. step two\n\n'
+        '### Tasks\n\n'
+        '- [x] shipped the fix\n'
+        '- [ ] write it up\n\n'
+        '> A quote worth keeping, indented and calm.\n\n'
+        '```\nfinal x = compute(render, request);\nawait x;\n```\n\n'
+        '---\n\n'
+        'And a closing thought with an emoji 🎉.';
+
+    final entries = <JournalEntry>[
+      entry('s1', DateTime(2025, 1, 4, 9),
+          title: 'New year 🎊', body: '$richBody\n\n$longParagraph', mood: 5),
+      entry('s2', DateTime(2025, 1, 18, 20), body: longParagraph, mood: 3),
+      entry('s3', DateTime(2025, 2, 2, 7),
+          title: 'A day in pictures 📸',
+          body: 'Two snapshots and a few words.\n\n$longParagraph',
+          mood: 4,
+          photoIds: ['p1', 'p2']),
+      entry('s4', DateTime(2025, 3, 9, 21),
+          title: 'Spring evening', body: richBody, mood: 2),
+      entry('s5', DateTime(2025, 3, 22, 11),
+          body: '## Just markdown\n\n$richBody', mood: 4),
+      entry('s6', DateTime(2025, 6, 1, 8),
+          title: 'Zürich → Škofja Loka',
+          body: 'Café «наизусть» ćevapčići œuvres.\n\n$longParagraph',
+          mood: 5),
+      entry('s7', DateTime(2025, 11, 2, 8),
+          title: 'Feeling 😄', body: richBody, mood: 5, photoIds: ['p3']),
+    ];
+
+    final request = YearBookRequest(
+      year: 2025,
+      entries: entries,
+      fonts: loadTestFonts(),
+      photos: {
+        'p1': tinyJpeg(width: 40, height: 30),
+        'p2': tinyJpeg(width: 30, height: 40),
+        'p3': tinyJpeg(width: 32, height: 32),
+      },
+    );
+
+    // Building never throws => no widget overflowed a page.
+    final pages = pageCount(request);
+    expect(pages, greaterThan(3));
+
+    final bytes = await YearBookPdfService.render(request);
+    expectPdfMagic(bytes);
+
+    final out = File('build/yearbook_sample.pdf');
+    out.parent.createSync(recursive: true);
+    out.writeAsBytesSync(bytes);
+    expect(out.existsSync(), isTrue);
+    // ignore: avoid_print
+    print('Wrote ${out.absolute.path} ($pages pages, ${bytes.length} bytes)');
+  });
 }

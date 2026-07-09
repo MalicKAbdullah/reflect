@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:reflect/src/features/entries/models/journal_entry.dart';
 import 'package:reflect/src/features/entries/providers/entries_providers.dart';
 import 'package:reflect/src/features/entries/screens/entry_view_screen.dart';
+import 'package:reflect/src/features/entries/widgets/markdown_entry_body.dart';
 
 /// Serves fixed entries without touching session, crypto or storage.
 class _FakeEntriesNotifier extends EntriesNotifier {
@@ -79,7 +79,7 @@ void main() {
       (tester) async {
     await pumpView(tester);
 
-    expect(find.byType(MarkdownBody), findsOneWidget);
+    expect(find.byType(MarkdownEntryBody), findsOneWidget);
     expect(find.text('A good day'), findsOneWidget); // title
     expect(find.text('Great'), findsOneWidget); // mood label chip
     expect(find.text('😄'), findsOneWidget);
