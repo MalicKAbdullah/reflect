@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:core_backup/core_backup.dart';
 import 'package:core_theme/core_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -113,6 +114,11 @@ class SettingsScreen extends ConsumerWidget {
             subtitle: const Text('Export or restore an encrypted backup'),
             trailing: const Icon(Icons.chevron_right),
             onTap: () => context.push(AppRoutes.backup),
+          ),
+          const _SectionLabel('Automatic backup'),
+          AutoBackupSection(
+            service: ref.watch(autoBackupServiceProvider),
+            producer: ref.watch(reflectBackupProducerProvider),
           ),
           ListTile(
             leading: const Icon(Icons.auto_stories_outlined),

@@ -1,3 +1,8 @@
+import 'dart:convert';
+import 'dart:io';
+import 'dart:typed_data';
+
+import 'package:core_backup/core_backup.dart';
 import 'package:core_crypto/core_crypto.dart';
 import 'package:core_storage/core_storage.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -9,10 +14,12 @@ import 'package:reflect/src/core/interfaces/journal_file_store.dart';
 import 'package:reflect/src/core/interfaces/key_derivation.dart';
 import 'package:reflect/src/core/interfaces/reminder_scheduler.dart';
 import 'package:reflect/src/features/attachments/services/attachment_service.dart';
+import 'package:reflect/src/features/auth/providers/auth_providers.dart';
 import 'package:reflect/src/features/auth/services/biometric_unlock_service.dart';
 import 'package:reflect/src/features/auth/services/pin_auth_service.dart';
 import 'package:reflect/src/features/backup/services/backup_service.dart';
 import 'package:reflect/src/features/entries/data/journal_repository.dart';
+import 'package:reflect/src/features/entries/providers/entries_providers.dart';
 
 /// Composition root. Tests override the leaf providers (storage, file store,
 /// key derivation, clock) with in-memory fakes — no platform channels.
@@ -70,6 +77,45 @@ final backupServiceProvider = Provider<BackupService>(
     clock: ref.watch(clockProvider),
   ),
 );
+
+/// Backup destination folder (shared engine). Android uses the Storage Access
+/// Framework so a Google Drive folder can be picked; iOS uses app documents.
+final backupFolderProvider = Provider<IBackupFolder>(
+  (ref) =>
+      Platform.isAndroid ? SafBackupFolder() : const AppDocumentsBackupFolder(),
+);
+
+/// Scheduled auto-backup engine (shared core_backup), namespaced to Reflect.
+final autoBackupServiceProvider = Provider<AutoBackupService>(
+  (ref) => AutoBackupService(
+    storage: ref.watch(secureStorageProvider),
+    folder: ref.watch(backupFolderProvider),
+    keyPrefix: 'reflect',
+    fileLabel: 'Reflect',
+    fileExtension: BackupService.fileExtension,
+    now: () => ref.read(clockProvider).now(),
+  ),
+);
+
+/// Produces the encrypted `.rfbackup` bytes for the current journal (entries +
+/// photo attachments), reusing the existing [BackupService]. Requires an
+/// unlocked session for the data key.
+final reflectBackupProducerProvider = Provider<BackupProducer>((ref) {
+  return (passphrase) async {
+    final entries = await ref.read(entriesProvider.future);
+    final attachments =
+        await ref.read(attachmentServiceProvider).exportPlaintext(
+      ids: {for (final e in entries) ...e.photoIds},
+      key: ref.read(sessionProvider.notifier).dataKey,
+    );
+    final json = await ref.read(backupServiceProvider).export(
+          entries: entries,
+          passphrase: passphrase!,
+          attachments: attachments,
+        );
+    return Uint8List.fromList(utf8.encode(json));
+  };
+});
 
 final attachmentStoreProvider = Provider<IAttachmentStore>(
   (_) => const DocumentsAttachmentStore(),
