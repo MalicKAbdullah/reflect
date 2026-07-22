@@ -30,7 +30,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     ),
     _OnboardingPage(
       Icons.lock_outline_rounded,
-      'Locked with your PIN',
+      'Locked with your password',
       'Everything stays on this device, encrypted. '
           'No accounts, no cloud, nobody else.',
     ),
@@ -153,7 +153,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                 width: double.infinity,
                 child: FilledButton(
                   onPressed: _next,
-                  child: Text(isLast ? 'Set up my PIN' : 'Next'),
+                  child: Text(isLast ? 'Set up my password' : 'Next'),
                 ),
               ),
             ),

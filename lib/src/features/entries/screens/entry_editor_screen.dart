@@ -284,8 +284,7 @@ class _EntryEditorScreenState extends ConsumerState<EntryEditorScreen> {
             keyboardType: TextInputType.multiline,
             decoration: const InputDecoration(
               hintText: 'What is on your mind?',
-              helperText:
-                  'Full Markdown supported — shows styled when reading '
+              helperText: 'Full Markdown supported — shows styled when reading '
                   '(headings, **bold**, *italic*, lists, > quotes, `code`, '
                   'links)',
               helperMaxLines: 3,

@@ -35,13 +35,13 @@ class _ChangePinScreenState extends ConsumerState<ChangePinScreen> {
     final newPin = _newController.text;
     final confirm = _confirmController.text;
 
-    if (newPin.length < PinAuthService.minPinLength ||
-        !RegExp(r'^\d+$').hasMatch(newPin)) {
-      setState(() => _error = 'New PIN must be at least 6 digits');
+    if (newPin.length < PinAuthService.minPinLength) {
+      setState(() => _error = 'New password must be at least '
+          '${PinAuthService.minPinLength} characters');
       return;
     }
     if (newPin != confirm) {
-      setState(() => _error = 'New PINs do not match');
+      setState(() => _error = 'New passwords do not match');
       return;
     }
 
@@ -58,14 +58,14 @@ class _ChangePinScreenState extends ConsumerState<ChangePinScreen> {
       case UnlockSuccess():
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('PIN changed — journal re-encrypted'),
+            content: Text('Password changed — journal re-encrypted'),
           ),
         );
         context.pop();
       case UnlockWrongPin():
         setState(() {
           _busy = false;
-          _error = 'Current PIN is incorrect';
+          _error = 'Current password is incorrect';
         });
       case UnlockCoolingDown(:final remaining):
         setState(() {
@@ -78,30 +78,27 @@ class _ChangePinScreenState extends ConsumerState<ChangePinScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Change PIN')),
+      appBar: AppBar(title: const Text('Change password')),
       body: ListView(
         padding: const EdgeInsets.all(AppSpacing.md),
         children: [
           VaultTextField(
-            label: 'Current PIN',
+            label: 'Current password',
             controller: _currentController,
             obscureText: true,
-            keyboardType: TextInputType.number,
             autofocus: true,
           ),
           const SizedBox(height: AppSpacing.md),
           VaultTextField(
-            label: 'New PIN (6+ digits)',
+            label: 'New password (6+ characters)',
             controller: _newController,
             obscureText: true,
-            keyboardType: TextInputType.number,
           ),
           const SizedBox(height: AppSpacing.md),
           VaultTextField(
-            label: 'Confirm new PIN',
+            label: 'Confirm new password',
             controller: _confirmController,
             obscureText: true,
-            keyboardType: TextInputType.number,
           ),
           const SizedBox(height: AppSpacing.lg),
           if (_error != null)
@@ -115,7 +112,7 @@ class _ChangePinScreenState extends ConsumerState<ChangePinScreen> {
               ),
             ),
           VaultButton(
-            label: 'Change PIN',
+            label: 'Change password',
             isLoading: _busy,
             onPressed: _submit,
           ),

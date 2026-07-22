@@ -219,10 +219,12 @@ final class MarkdownPdf {
                 if (inlineChildren.isNotEmpty)
                   pw.RichText(
                     overflow: pw.TextOverflow.span,
-                    text: pw.TextSpan(children: _inline(inlineChildren, _base())),
+                    text:
+                        pw.TextSpan(children: _inline(inlineChildren, _base())),
                   ),
                 for (final widget in nested) ...[
-                  if (widget != nested.first) pw.SizedBox(height: theme.blockGap),
+                  if (widget != nested.first)
+                    pw.SizedBox(height: theme.blockGap),
                   widget,
                 ],
               ],
@@ -250,7 +252,8 @@ final class MarkdownPdf {
       ),
       child: pw.Column(
         crossAxisAlignment: pw.CrossAxisAlignment.start,
-        children: children.isEmpty ? [_paragraph(node.textContent.trim())] : children,
+        children:
+            children.isEmpty ? [_paragraph(node.textContent.trim())] : children,
       ),
     );
   }
@@ -356,8 +359,7 @@ final class MarkdownPdf {
     }
   }
 
-  static String _unescape(String text) =>
-      const HtmlUnescape().convert(text);
+  static String _unescape(String text) => const HtmlUnescape().convert(text);
 }
 
 /// Minimal HTML entity unescape for the few entities the markdown parser can

@@ -4,6 +4,6 @@ abstract final class AppInfo {
   static const String version = '1.3.1';
 
   static const String privacyBlurb =
-      'Your journal stays on this device, protected by your PIN and '
+      'Your journal stays on this device, protected by your password and '
       'encryption. Reflect never connects to the internet.';
 }

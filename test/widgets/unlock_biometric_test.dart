@@ -39,12 +39,9 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  Future<void> enterPin(WidgetTester tester, String pin) async {
-    for (final digit in pin.split('')) {
-      await tester.tap(find.text(digit));
-      await tester.pump();
-    }
-    await tester.tap(find.byIcon(Icons.check_rounded));
+  Future<void> enterPassword(WidgetTester tester, String password) async {
+    await tester.enterText(find.byType(TextField), password);
+    await tester.tap(find.widgetWithText(FilledButton, 'Unlock'));
     await tester.pumpAndSettle();
   }
 
@@ -67,7 +64,8 @@ void main() {
       (tester) async {
     biometric.authenticates = false; // keep the auto-prompt from unlocking
     await pumpUnlock(tester);
-    expect(find.byIcon(Icons.fingerprint_rounded), findsOneWidget);
+    // Fingerprint appears in the field suffix and as the button below it.
+    expect(find.byIcon(Icons.fingerprint_rounded), findsWidgets);
     expect(container.read(sessionProvider), AuthStatus.locked);
   });
 
@@ -87,17 +85,18 @@ void main() {
     expect(container.read(sessionProvider), AuthStatus.locked);
 
     biometric.authenticates = true;
-    await tester.tap(find.byIcon(Icons.fingerprint_rounded));
+    await tester.tap(find.byIcon(Icons.fingerprint_rounded).first);
     await tester.pumpAndSettle();
     expect(biometric.promptCount, 2);
     expect(container.read(sessionProvider), AuthStatus.unlocked);
   });
 
-  testWidgets('PIN always unlocks even when biometrics fail', (tester) async {
+  testWidgets('password always unlocks even when biometrics fail',
+      (tester) async {
     biometric.authenticates = false;
     await pumpUnlock(tester);
     expect(container.read(sessionProvider), AuthStatus.locked);
-    await enterPin(tester, '123456');
+    await enterPassword(tester, '123456');
     expect(container.read(sessionProvider), AuthStatus.unlocked);
   });
 
@@ -108,9 +107,9 @@ void main() {
     expect(biometric.promptCount, 0);
     expect(find.textContaining('Biometric hardware is unavailable'),
         findsOneWidget);
-    // Button is still offered (toggle is on), and the PIN still works.
-    expect(find.byIcon(Icons.fingerprint_rounded), findsOneWidget);
-    await enterPin(tester, '123456');
+    // Button is still offered (toggle is on), and the password still works.
+    expect(find.byIcon(Icons.fingerprint_rounded), findsWidgets);
+    await enterPassword(tester, '123456');
     expect(container.read(sessionProvider), AuthStatus.unlocked);
   });
 }

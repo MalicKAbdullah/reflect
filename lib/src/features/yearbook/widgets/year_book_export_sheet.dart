@@ -20,8 +20,7 @@ Future<YearBookExportChoice?> showYearBookExportSheet({
 }) {
   return showModalBottomSheet<YearBookExportChoice>(
     context: context,
-    builder: (context) =>
-        _YearBookExportSheet(years: years, counts: counts),
+    builder: (context) => _YearBookExportSheet(years: years, counts: counts),
   );
 }
 

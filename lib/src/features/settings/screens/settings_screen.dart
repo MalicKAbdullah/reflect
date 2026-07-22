@@ -48,8 +48,8 @@ class SettingsScreen extends ConsumerWidget {
         children: [
           const _SectionLabel('Security'),
           ListTile(
-            leading: const Icon(Icons.pin_outlined),
-            title: const Text('Change PIN'),
+            leading: const Icon(Icons.password_outlined),
+            title: const Text('Change password'),
             subtitle: const Text('Your journal is re-secured with it'),
             trailing: const Icon(Icons.chevron_right),
             onTap: () => context.push(AppRoutes.changePin),
@@ -57,9 +57,9 @@ class SettingsScreen extends ConsumerWidget {
           if (biometricSupported)
             SwitchListTile(
               secondary: const Icon(Icons.fingerprint_rounded),
-              title: const Text('Biometric unlock'),
+              title: const Text('Fingerprint unlock'),
               subtitle:
-                  const Text('Use fingerprint or face instead of your PIN'),
+                  const Text('Use a fingerprint instead of your password'),
               value: biometricEnabled,
               onChanged: (next) => _toggleBiometrics(context, ref, next),
             ),
@@ -137,7 +137,7 @@ class SettingsScreen extends ConsumerWidget {
               style: TextStyle(color: theme.colorScheme.error),
             ),
             subtitle: const Text(
-              'Permanently deletes your journal and PIN',
+              'Permanently deletes your journal and password',
             ),
             onTap: () => _confirmErase(context, ref),
           ),
@@ -327,7 +327,7 @@ class SettingsScreen extends ConsumerWidget {
       builder: (context) => AlertDialog(
         title: const Text('Erase all data?'),
         content: const Text(
-          'Your journal, PIN and settings will be permanently deleted. '
+          'Your journal, password and settings will be permanently deleted. '
           'This cannot be undone.',
         ),
         actions: [

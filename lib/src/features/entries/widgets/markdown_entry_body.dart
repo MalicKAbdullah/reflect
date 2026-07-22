@@ -16,7 +16,8 @@ import 'package:url_launcher/url_launcher.dart';
 /// agree. Reading-comfortable typography derived from the app theme; links
 /// are tappable via url_launcher and a link that cannot open fails quietly.
 class MarkdownEntryBody extends StatefulWidget {
-  const MarkdownEntryBody({required this.data, required this.baseStyle, super.key});
+  const MarkdownEntryBody(
+      {required this.data, required this.baseStyle, super.key});
 
   final String data;
   final TextStyle baseStyle;
@@ -309,9 +310,11 @@ class _MarkdownBuilder {
   List<InlineSpan> _inlineElement(md.Element node, TextStyle style) {
     switch (node.tag) {
       case 'strong':
-        return _inline(node.children, style.copyWith(fontWeight: FontWeight.w700));
+        return _inline(
+            node.children, style.copyWith(fontWeight: FontWeight.w700));
       case 'em':
-        return _inline(node.children, style.copyWith(fontStyle: FontStyle.italic));
+        return _inline(
+            node.children, style.copyWith(fontStyle: FontStyle.italic));
       case 'del':
         return _inline(
           node.children,

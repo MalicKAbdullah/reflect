@@ -35,12 +35,9 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  Future<void> enterPin(WidgetTester tester, String pin) async {
-    for (final digit in pin.split('')) {
-      await tester.tap(find.text(digit));
-      await tester.pump();
-    }
-    await tester.tap(find.byIcon(Icons.check_rounded));
+  Future<void> enterPassword(WidgetTester tester, String password) async {
+    await tester.enterText(find.byType(TextField), password);
+    await tester.tap(find.widgetWithText(FilledButton, 'Unlock'));
     await tester.pumpAndSettle();
   }
 
@@ -48,7 +45,7 @@ void main() {
     storage = FakeSecureStorage();
     fileStore = InMemoryFileStore();
     clock = FixedClock(DateTime(2026, 7, 3, 12));
-    // Seed an existing vault with PIN 123456 using the same fakes.
+    // Seed an existing vault with password 123456 using the same fakes.
     final seedContainer = ProviderContainer(
       overrides: [
         secureStorageProvider.overrideWithValue(storage),
@@ -61,40 +58,38 @@ void main() {
     seedContainer.dispose();
   });
 
-  testWidgets('renders keypad and prompt', (tester) async {
+  testWidgets('renders password field and prompt', (tester) async {
     await pumpUnlock(tester);
     expect(
-      find.text('Enter your PIN to unlock your journal'),
+      find.text('Enter your password to unlock your journal'),
       findsOneWidget,
     );
-    for (var d = 0; d <= 9; d++) {
-      expect(find.text('$d'), findsOneWidget);
-    }
+    expect(find.byType(TextField), findsOneWidget);
     expect(container.read(sessionProvider), AuthStatus.locked);
   });
 
-  testWidgets('wrong PIN shows error and stays locked', (tester) async {
+  testWidgets('wrong password shows error and stays locked', (tester) async {
     await pumpUnlock(tester);
-    await enterPin(tester, '999999');
-    expect(find.textContaining('Wrong PIN'), findsOneWidget);
+    await enterPassword(tester, '999999');
+    expect(find.textContaining('Wrong password'), findsOneWidget);
     expect(container.read(sessionProvider), AuthStatus.locked);
   });
 
-  testWidgets('correct PIN unlocks the session', (tester) async {
+  testWidgets('correct password unlocks the session', (tester) async {
     await pumpUnlock(tester);
-    await enterPin(tester, '123456');
+    await enterPassword(tester, '123456');
     expect(container.read(sessionProvider), AuthStatus.unlocked);
-    expect(find.textContaining('Wrong PIN'), findsNothing);
+    expect(find.textContaining('Wrong password'), findsNothing);
   });
 
   testWidgets('five wrong attempts show the cooldown message', (tester) async {
     await pumpUnlock(tester);
     for (var i = 0; i < 5; i++) {
-      await enterPin(tester, '111111');
+      await enterPassword(tester, '111111');
     }
     expect(find.textContaining('Too many attempts'), findsOneWidget);
-    // Correct PIN is rejected during cooldown.
-    await enterPin(tester, '123456');
+    // Correct password is rejected during cooldown.
+    await enterPassword(tester, '123456');
     expect(container.read(sessionProvider), AuthStatus.locked);
     // Cancel the countdown ticker before the test ends.
     await tester.pumpWidget(const SizedBox.shrink());

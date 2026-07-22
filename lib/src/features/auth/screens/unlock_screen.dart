@@ -6,7 +6,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:reflect/src/core/di.dart';
 import 'package:reflect/src/features/auth/providers/auth_providers.dart';
 import 'package:reflect/src/features/auth/services/pin_auth_service.dart';
-import 'package:reflect/src/features/auth/widgets/pin_entry_panel.dart';
 
 /// Whether the biometric unlock button should appear. The single source of
 /// truth is the persisted `biometricEnabled` flag (+ a wrapped key) — read
@@ -24,7 +23,7 @@ class UnlockScreen extends ConsumerStatefulWidget {
 }
 
 class _UnlockScreenState extends ConsumerState<UnlockScreen> {
-  final GlobalKey<PinEntryPanelState> _panelKey = GlobalKey();
+  final TextEditingController _password = TextEditingController();
   String? _error;
   bool _busy = false;
 
@@ -43,26 +42,29 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
   @override
   void dispose() {
     _ticker?.cancel();
+    _password.dispose();
     super.dispose();
   }
 
-  Future<void> _unlock(String pin) async {
+  Future<void> _submit() async {
+    final value = _password.text;
+    if (value.isEmpty || _busy) return;
     setState(() {
       _busy = true;
       _error = null;
     });
-    final result = await ref.read(sessionProvider.notifier).unlock(pin);
+    final result = await ref.read(sessionProvider.notifier).unlock(value);
     if (!mounted) return;
-    _panelKey.currentState?.clear();
     switch (result) {
       case UnlockSuccess():
         // Router redirect handles navigation.
+        _password.clear();
         setState(() => _busy = false);
       case UnlockWrongPin(:final failedAttempts, :final cooldown):
-        _panelKey.currentState?.shake();
+        _password.clear();
         setState(() {
           _busy = false;
-          _error = 'Wrong PIN ($failedAttempts '
+          _error = 'Wrong password ($failedAttempts '
               'failed attempt${failedAttempts == 1 ? '' : 's'})';
         });
         if (cooldown != null) _startCooldown(cooldown);
@@ -100,7 +102,7 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
       // stay quiet and let them retry or use the PIN. A manual tap that
       // fails gets a gentle nudge toward the PIN.
       if (!ok && !auto) {
-        _error = 'Biometric unlock didn\'t work — use your PIN';
+        _error = "Biometric unlock didn't work — use your password";
       }
     });
   }
@@ -159,29 +161,51 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
                 const Text('Reflect', style: AppTextStyles.h1),
                 const SizedBox(height: AppSpacing.xs),
                 Text(
-                  'Enter your PIN to unlock your journal',
+                  'Enter your password to unlock your journal',
                   style: theme.textTheme.bodySmall,
                 ),
                 const SizedBox(height: AppSpacing.xl),
-                PinEntryPanel(
-                  key: _panelKey,
+                TextField(
+                  controller: _password,
+                  obscureText: true,
                   enabled: !_busy && !coolingDown,
-                  onSubmit: _unlock,
+                  autofocus: true,
+                  textInputAction: TextInputAction.go,
+                  onSubmitted: (_) => _submit(),
+                  decoration: InputDecoration(
+                    labelText: 'Password',
+                    border: const OutlineInputBorder(),
+                    suffixIcon: offerBiometrics
+                        ? IconButton(
+                            tooltip: 'Unlock with fingerprint',
+                            onPressed: _busy || coolingDown
+                                ? null
+                                : () => _unlockWithBiometrics(),
+                            icon: const Icon(Icons.fingerprint_rounded),
+                          )
+                        : null,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.md),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton(
+                    onPressed: _busy || coolingDown ? null : _submit,
+                    child: const Text('Unlock'),
+                  ),
                 ),
                 if (offerBiometrics) ...[
                   const SizedBox(height: AppSpacing.sm),
-                  IconButton(
+                  TextButton.icon(
                     onPressed: _busy || coolingDown
                         ? null
                         : () => _unlockWithBiometrics(),
-                    tooltip: 'Unlock with biometrics',
-                    iconSize: 32,
-                    color: theme.colorScheme.primary,
                     icon: const Icon(Icons.fingerprint_rounded),
+                    label: const Text('Use fingerprint'),
                   ),
                   if (_biometricUnavailable)
                     Text(
-                      'Biometric hardware is unavailable — use your PIN',
+                      'Biometric hardware is unavailable — use your password',
                       textAlign: TextAlign.center,
                       style: theme.textTheme.bodySmall!
                           .copyWith(color: theme.colorScheme.onSurfaceVariant),

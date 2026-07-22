@@ -50,13 +50,13 @@ void main() {
 
     await tester.tap(find.text('Next'));
     await tester.pumpAndSettle();
-    expect(find.text('Locked with your PIN'), findsOneWidget);
+    expect(find.text('Locked with your password'), findsOneWidget);
 
     await tester.tap(find.text('Next'));
     await tester.pumpAndSettle();
     expect(find.text('Capture the day your way'), findsOneWidget);
 
-    await tester.tap(find.text('Set up my PIN'));
+    await tester.tap(find.text('Set up my password'));
     await tester.pumpAndSettle();
 
     // Landed on PIN setup, and the flag is recorded.
@@ -87,7 +87,7 @@ void main() {
     expect(find.text('Your private space to reflect'), findsNothing);
     expect(find.text('Welcome to Reflect'), findsNothing);
     expect(
-      find.text('Enter your PIN to unlock your journal'),
+      find.text('Enter your password to unlock your journal'),
       findsOneWidget,
     );
   });
