@@ -11,6 +11,7 @@ import 'package:reflect/src/features/auth/providers/auth_providers.dart';
 import 'package:reflect/src/features/entries/providers/draft_providers.dart';
 import 'package:reflect/src/features/entries/providers/entries_providers.dart';
 import 'package:reflect/src/features/entries/services/writing_prompts.dart';
+import 'package:reflect/src/features/entries/widgets/markdown_entry_body.dart';
 import 'package:reflect/src/features/entries/widgets/mood_selector.dart';
 import 'package:reflect/src/features/entries/widgets/tag_selector.dart';
 
@@ -41,8 +42,38 @@ class _EntryEditorScreenState extends ConsumerState<EntryEditorScreen> {
   final List<String> _addedPhotoIds = [];
   bool _photoBusy = false;
   bool _draftSaved = false;
+  bool _preview = false;
 
   String get _draftKey => widget.entryId ?? DraftsNotifier.newEntryKey;
+
+  /// Wraps the current selection with [left]/[right] (e.g. ** for bold),
+  /// or inserts the pair at the cursor when nothing is selected.
+  void _wrapSelection(String left, String right) {
+    final value = _bodyController.value;
+    final sel = value.selection;
+    final start = sel.start < 0 ? value.text.length : sel.start;
+    final end = sel.end < 0 ? value.text.length : sel.end;
+    final selected = value.text.substring(start, end);
+    final newText = value.text.replaceRange(start, end, '$left$selected$right');
+    _bodyController.value = value.copyWith(
+      text: newText,
+      selection: TextSelection.collapsed(
+        offset: end + left.length + right.length,
+      ),
+    );
+  }
+
+  /// Prepends [prefix] to the start of the line the cursor is on.
+  void _prefixLine(String prefix) {
+    final value = _bodyController.value;
+    final pos = value.selection.start < 0 ? 0 : value.selection.start;
+    final lineStart = value.text.lastIndexOf('\n', pos - 1) + 1;
+    final newText = value.text.replaceRange(lineStart, lineStart, prefix);
+    _bodyController.value = value.copyWith(
+      text: newText,
+      selection: TextSelection.collapsed(offset: pos + prefix.length),
+    );
+  }
 
   @override
   void initState() {
@@ -234,6 +265,12 @@ class _EntryEditorScreenState extends ConsumerState<EntryEditorScreen> {
                 child: Text('Draft saved', style: theme.textTheme.labelSmall),
               ),
             ),
+          IconButton(
+            icon: Icon(
+                _preview ? Icons.edit_outlined : Icons.visibility_outlined),
+            tooltip: _preview ? 'Edit' : 'Preview',
+            onPressed: () => setState(() => _preview = !_preview),
+          ),
           if (!widget.isNew)
             IconButton(
               icon: const Icon(Icons.delete_outline),
@@ -276,20 +313,45 @@ class _EntryEditorScreenState extends ConsumerState<EntryEditorScreen> {
             decoration: const InputDecoration(hintText: 'Title (optional)'),
           ),
           const SizedBox(height: AppSpacing.md),
-          TextField(
-            controller: _bodyController,
-            textCapitalization: TextCapitalization.sentences,
-            maxLines: null,
-            minLines: 8,
-            keyboardType: TextInputType.multiline,
-            decoration: const InputDecoration(
-              hintText: 'What is on your mind?',
-              helperText: 'Full Markdown supported — shows styled when reading '
-                  '(headings, **bold**, *italic*, lists, > quotes, `code`, '
-                  'links)',
-              helperMaxLines: 3,
+          if (!_preview) ...[
+            _MarkdownToolbar(
+              onBold: () => _wrapSelection('**', '**'),
+              onItalic: () => _wrapSelection('*', '*'),
+              onHeading: () => _prefixLine('## '),
+              onBullet: () => _prefixLine('- '),
+              onQuote: () => _prefixLine('> '),
             ),
-          ),
+            const SizedBox(height: AppSpacing.xs),
+            TextField(
+              controller: _bodyController,
+              textCapitalization: TextCapitalization.sentences,
+              maxLines: null,
+              minLines: 8,
+              keyboardType: TextInputType.multiline,
+              decoration: const InputDecoration(
+                hintText: 'What is on your mind?',
+                helperText: 'Markdown supported — tap the eye to preview.',
+              ),
+            ),
+          ] else
+            Container(
+              width: double.infinity,
+              constraints: const BoxConstraints(minHeight: 160),
+              padding: const EdgeInsets.all(AppSpacing.md),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(AppSpacing.borderRadius),
+                border: Border.all(color: theme.colorScheme.outline),
+              ),
+              child: _bodyController.text.trim().isEmpty
+                  ? Text(
+                      'Nothing to preview yet.',
+                      style: theme.textTheme.bodySmall,
+                    )
+                  : MarkdownEntryBody(
+                      data: _bodyController.text,
+                      baseStyle: theme.textTheme.bodyLarge!,
+                    ),
+            ),
           const SizedBox(height: AppSpacing.lg),
           Text('How do you feel?', style: theme.textTheme.titleLarge),
           const SizedBox(height: AppSpacing.sm),
@@ -322,6 +384,56 @@ class _EntryEditorScreenState extends ConsumerState<EntryEditorScreen> {
           const SizedBox(height: AppSpacing.xxl),
         ],
       ),
+    );
+  }
+}
+
+/// A compact Markdown formatting toolbar for the entry editor.
+class _MarkdownToolbar extends StatelessWidget {
+  const _MarkdownToolbar({
+    required this.onBold,
+    required this.onItalic,
+    required this.onHeading,
+    required this.onBullet,
+    required this.onQuote,
+  });
+
+  final VoidCallback onBold;
+  final VoidCallback onItalic;
+  final VoidCallback onHeading;
+  final VoidCallback onBullet;
+  final VoidCallback onQuote;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        IconButton(
+          tooltip: 'Bold',
+          icon: const Icon(Icons.format_bold),
+          onPressed: onBold,
+        ),
+        IconButton(
+          tooltip: 'Italic',
+          icon: const Icon(Icons.format_italic),
+          onPressed: onItalic,
+        ),
+        IconButton(
+          tooltip: 'Heading',
+          icon: const Icon(Icons.title),
+          onPressed: onHeading,
+        ),
+        IconButton(
+          tooltip: 'Bulleted list',
+          icon: const Icon(Icons.format_list_bulleted),
+          onPressed: onBullet,
+        ),
+        IconButton(
+          tooltip: 'Quote',
+          icon: const Icon(Icons.format_quote),
+          onPressed: onQuote,
+        ),
+      ],
     );
   }
 }

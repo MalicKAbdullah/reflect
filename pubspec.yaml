@@ -1,6 +1,6 @@
 name: reflect
 description: Reflect — an encrypted, offline-first journal with full-text search and mood analytics.
-version: 1.6.0+8
+version: 1.7.0+9
 publish_to: none
 
 environment:
