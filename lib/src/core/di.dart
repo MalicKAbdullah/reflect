@@ -5,6 +5,7 @@ import 'dart:typed_data';
 import 'package:core_backup/core_backup.dart';
 import 'package:core_crypto/core_crypto.dart';
 import 'package:core_storage/core_storage.dart';
+import 'package:core_update/core_update.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:reflect/src/core/clock.dart';
@@ -136,3 +137,28 @@ final attachmentServiceProvider = Provider<AttachmentService>(
 final reminderSchedulerProvider = Provider<IReminderScheduler>(
   (_) => const NoopReminderScheduler(),
 );
+
+// -- In-app update (core_update) ------------------------------------------
+
+/// Secure-storage key for the auto-check preference.
+const String updateAutoCheckKey = 'reflect_update_autocheck';
+
+final updateServiceProvider = Provider<IUpdateService>(
+  (_) => GithubUpdateService(owner: 'MalicKAbdullah', repo: 'reflect'),
+);
+
+/// Auto-check preference (persisted; on by default). Toggle in Settings.
+final updateAutoCheckProvider = FutureProvider<bool>(
+  (ref) async =>
+      await ref.watch(secureStorageProvider).read(key: updateAutoCheckKey) !=
+      'false',
+);
+
+/// The pending update (null when disabled, up to date, or offline).
+final updateCheckProvider = FutureProvider<UpdateInfo?>((ref) async {
+  if (!await ref.watch(updateAutoCheckProvider.future)) return null;
+  return ref.watch(updateServiceProvider).check();
+});
+
+/// Session-only dismissal of the update banner.
+final updateDismissedProvider = StateProvider<bool>((_) => false);

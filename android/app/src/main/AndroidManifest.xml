@@ -1,5 +1,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.USE_BIOMETRIC"/>
+    <!-- In-app update check (GitHub release lookup) — the only network use. -->
+    <uses-permission android:name="android.permission.INTERNET"/>
     <!-- Daily writing reminder: post notifications (API 33+) and restore
          the schedule after reboot. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>

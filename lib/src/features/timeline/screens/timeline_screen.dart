@@ -1,5 +1,6 @@
 import 'package:core_theme/core_theme.dart';
 import 'package:core_ui/core_ui.dart';
+import 'package:core_update/core_update.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -57,7 +58,20 @@ class TimelineScreen extends ConsumerWidget {
             entries,
             ref.watch(clockProvider).now(),
           );
+          final update = ref.watch(updateCheckProvider).valueOrNull;
+          final updateDismissed = ref.watch(updateDismissedProvider);
           final leading = <Widget>[
+            if (update != null && !updateDismissed)
+              Padding(
+                padding: const EdgeInsets.only(top: AppSpacing.sm),
+                child: UpdateBanner(
+                  info: update,
+                  onUpdate: () =>
+                      ref.read(updateServiceProvider).openDownload(update),
+                  onDismiss: () =>
+                      ref.read(updateDismissedProvider.notifier).state = true,
+                ),
+              ),
             if (progress != null)
               Padding(
                 padding: const EdgeInsets.only(
