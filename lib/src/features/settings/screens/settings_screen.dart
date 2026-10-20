@@ -182,14 +182,15 @@ class SettingsScreen extends ConsumerWidget {
             ),
             const SizedBox(height: AppSpacing.md),
             const SectionHeader(title: 'About'),
-            const RowGroup(
+            RowGroup(
               children: [
                 SettingsTile(
                   icon: Icons.self_improvement_rounded,
                   title: 'Reflect',
-                  subtitle: 'Version ${AppInfo.version}',
+                  subtitle:
+                      'Version ${ref.watch(appVersionProvider).valueOrNull ?? ''}',
                 ),
-                SettingsTile(
+                const SettingsTile(
                   icon: Icons.shield_outlined,
                   title: 'Privacy',
                   subtitle: AppInfo.privacyBlurb,

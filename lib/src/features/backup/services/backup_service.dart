@@ -2,7 +2,6 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:core_crypto/core_crypto.dart';
-import 'package:reflect/src/core/app_info.dart';
 import 'package:reflect/src/core/clock.dart';
 import 'package:reflect/src/core/interfaces/key_derivation.dart';
 import 'package:reflect/src/features/entries/models/journal_entry.dart';
@@ -43,13 +42,16 @@ final class BackupService {
   const BackupService({
     required IKeyDerivation keyDerivation,
     required CipherService cipher,
+    required Future<String> Function() appVersion,
     required Clock clock,
   })  : _kdf = keyDerivation,
         _cipher = cipher,
+        _appVersion = appVersion,
         _clock = clock;
 
   final IKeyDerivation _kdf;
   final CipherService _cipher;
+  final Future<String> Function() _appVersion;
   final Clock _clock;
 
   static const int formatVersion = 2;
@@ -85,7 +87,7 @@ final class BackupService {
     return jsonEncode({
       'formatVersion': formatVersion,
       'app': 'reflect',
-      'appVersion': AppInfo.version,
+      'appVersion': await _appVersion(),
       'createdAt': _clock.now().toIso8601String(),
       'entryCount': entries.length,
       'photoCount': attachments.length,
