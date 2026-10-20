@@ -83,7 +83,8 @@ void main() {
           .pages
           .length;
 
-  test('renders valid PDF bytes with cover stats and markdown body', () async {
+  test('renders valid PDF bytes with cover stats and markdown body',
+      () async {
     final bytes = await YearBookPdfService.render(
       YearBookRequest(
         year: 2025,
@@ -127,7 +128,8 @@ void main() {
     expectPdfMagic(bytes);
   });
 
-  test('emoji font loads and a PDF builds with emoji in the content', () async {
+  test('emoji font loads and a PDF builds with emoji in the content',
+      () async {
     final fonts = loadTestFonts();
     expect(fonts.emoji, isNotEmpty);
     final bytes = await YearBookPdfService.render(
@@ -148,8 +150,7 @@ void main() {
     expectPdfMagic(bytes);
   });
 
-  test(
-      'photo-bearing entries embed images (bigger than the same book '
+  test('photo-bearing entries embed images (bigger than the same book '
       'without photos)', () async {
     final withPhotos = YearBookRequest(
       year: 2025,
@@ -181,7 +182,8 @@ void main() {
         reason: 'embedding photos should add bytes to the document');
   });
 
-  test('markdown body renders to multiple PDF nodes and valid bytes', () async {
+  test('markdown body renders to multiple PDF nodes and valid bytes',
+      () async {
     final fonts = loadTestFonts();
     final markdown = MarkdownPdf(
       MarkdownPdfTheme(
