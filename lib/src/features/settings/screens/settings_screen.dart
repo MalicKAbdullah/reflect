@@ -206,7 +206,8 @@ class SettingsScreen extends ConsumerWidget {
 
   /// Re-auth, confirm replacing any current key, then show the new one.
   Future<void> _newRecoveryKey(BuildContext context, WidgetRef ref) async {
-    if (!await confirmOwner(context, ref, reason: 'Create a new recovery key')) {
+    if (!await confirmOwner(context, ref,
+        reason: 'Create a new recovery key')) {
       return;
     }
     if (await ref.read(pinAuthServiceProvider).hasRecoveryKey()) {
@@ -475,7 +476,7 @@ class _UpdateSectionState extends ConsumerState<_UpdateSection> {
         SettingsTile(
           icon: Icons.system_update_alt,
           title: 'Check for updates',
-          subtitle: 'Checks GitHub on open. Nothing is uploaded.',
+          subtitle: 'Checks GitHub on open',
           trailing: Switch(
             value: autoCheck,
             onChanged: (v) async {

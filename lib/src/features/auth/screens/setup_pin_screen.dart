@@ -73,8 +73,8 @@ class _SetupPinScreenState extends ConsumerState<SetupPinScreen> {
                   const SizedBox(height: AppSpacing.sm),
                   Text(
                     'Create a password (6+ characters). It encrypts your '
-                    'journal on this device and cannot be recovered. Pick '
-                    'something you will remember.',
+                    'journal on this device. Next, you can create a recovery '
+                    'key in case you ever forget it.',
                     style: AppTextStyles.body.copyWith(color: c.textSecondary),
                   ),
                   const SizedBox(height: AppSpacing.xl),

@@ -3,7 +3,6 @@ abstract final class AppInfo {
   static const String name = 'Reflect';
   static const String version = '1.7.1';
 
-  static const String privacyBlurb =
-      'Your journal stays on this device, protected by your password and '
-      'encryption. The only network use is the optional update check.';
+  /// One settings-row line, so it must stay short enough not to truncate.
+  static const String privacyBlurb = 'Encrypted, and stays on this device';
 }

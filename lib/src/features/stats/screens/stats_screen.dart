@@ -63,10 +63,9 @@ class StatsScreen extends ConsumerWidget {
               deltaCaption: '${stats.totalEntries} '
                   '${stats.totalEntries == 1 ? 'entry' : 'entries'} in total',
               trend: [
-                for (final n in JournalStats.dailyEntryCounts(
+                for (final n in JournalStats.cumulativeWords(
                   entries,
                   now: ref.watch(clockProvider).now(),
-                  days: 30,
                 ))
                   n.toDouble(),
               ],
