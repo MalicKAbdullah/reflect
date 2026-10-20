@@ -182,14 +182,15 @@ class SettingsScreen extends ConsumerWidget {
             ),
             const SizedBox(height: AppSpacing.md),
             const SectionHeader(title: 'About'),
-            const RowGroup(
+            RowGroup(
               children: [
                 SettingsTile(
                   icon: Icons.self_improvement_rounded,
                   title: 'Reflect',
-                  subtitle: 'Version ${AppInfo.version}',
+                  subtitle:
+                      'Version ${ref.watch(appVersionProvider).valueOrNull ?? ''}',
                 ),
-                SettingsTile(
+                const SettingsTile(
                   icon: Icons.shield_outlined,
                   title: 'Privacy',
                   subtitle: AppInfo.privacyBlurb,
@@ -206,7 +207,8 @@ class SettingsScreen extends ConsumerWidget {
 
   /// Re-auth, confirm replacing any current key, then show the new one.
   Future<void> _newRecoveryKey(BuildContext context, WidgetRef ref) async {
-    if (!await confirmOwner(context, ref, reason: 'Create a new recovery key')) {
+    if (!await confirmOwner(context, ref,
+        reason: 'Create a new recovery key')) {
       return;
     }
     if (await ref.read(pinAuthServiceProvider).hasRecoveryKey()) {

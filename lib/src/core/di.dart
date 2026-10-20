@@ -8,6 +8,7 @@ import 'package:core_storage/core_storage.dart';
 import 'package:core_update/core_update.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:reflect/src/core/app_info.dart';
 import 'package:reflect/src/core/clock.dart';
 import 'package:reflect/src/core/interfaces/attachment_store.dart';
 import 'package:reflect/src/core/interfaces/biometric_auth.dart';
@@ -75,6 +76,7 @@ final backupServiceProvider = Provider<BackupService>(
   (ref) => BackupService(
     keyDerivation: ref.watch(keyDerivationProvider),
     cipher: ref.watch(cipherServiceProvider),
+    appVersion: () => ref.read(appVersionProvider.future),
     clock: ref.watch(clockProvider),
   ),
 );
