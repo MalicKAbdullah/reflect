@@ -100,12 +100,12 @@ final class SessionNotifier extends Notifier<AuthStatus> {
     final UnlockResult result;
     if (oldPin == null) {
       if (!_unlockedWithBiometrics ||
-          !await ref
-              .read(biometricAuthProvider)
-              .authenticate(reason: 'Confirm it’s you to change your password')) {
+          !await ref.read(biometricAuthProvider).authenticate(
+              reason: 'Confirm it’s you to change your password')) {
         return (const UnlockWrongPin(failedAttempts: 0), null);
       }
-      result = await _auth.changePinWithKey(currentKey: dataKey, newPin: newPin);
+      result =
+          await _auth.changePinWithKey(currentKey: dataKey, newPin: newPin);
     } else {
       result = await _auth.changePin(oldPin: oldPin, newPin: newPin);
     }

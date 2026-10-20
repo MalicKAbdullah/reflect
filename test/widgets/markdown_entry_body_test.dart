@@ -36,7 +36,8 @@ void main() {
         home: Scaffold(
           body: MarkdownEntryBody(
             data: data,
-            baseStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w400),
+            baseStyle:
+                const TextStyle(fontSize: 16, fontWeight: FontWeight.w400),
           ),
         ),
       ),
@@ -64,7 +65,8 @@ void main() {
     bool has(bool Function(_Run) t) => runs.any(t);
 
     // Inline styling.
-    expect(has((r) => r.text == 'bold' && r.style.fontWeight == FontWeight.w700),
+    expect(
+        has((r) => r.text == 'bold' && r.style.fontWeight == FontWeight.w700),
         isTrue);
     expect(
         has((r) => r.text == 'italic' && r.style.fontStyle == FontStyle.italic),
@@ -73,8 +75,7 @@ void main() {
         isTrue);
     expect(
         has((r) =>
-            r.text == 'docs' &&
-            r.style.decoration == TextDecoration.underline),
+            r.text == 'docs' && r.style.decoration == TextDecoration.underline),
         isTrue);
 
     // Structure.
@@ -84,8 +85,11 @@ void main() {
     expect(find.text('1.'), findsOneWidget); // ordered marker
     expect(find.text('2.'), findsOneWidget);
     expect(find.textContaining('a wise quote'), findsOneWidget);
-    expect(has((r) => r.text.contains('print(fenced);') &&
-        r.style.fontFamily == 'monospace'), isTrue);
+    expect(
+        has((r) =>
+            r.text.contains('print(fenced);') &&
+            r.style.fontFamily == 'monospace'),
+        isTrue);
 
     // Task list checkboxes.
     expect(find.byIcon(Icons.check_box_rounded), findsOneWidget);

@@ -115,8 +115,7 @@ void main() {
     // Link, underlined.
     expect(
       has((r) =>
-          r.text == 'docs' &&
-          r.style.decoration == TextDecoration.underline),
+          r.text == 'docs' && r.style.decoration == TextDecoration.underline),
       isTrue,
       reason: 'link should render underlined',
     );

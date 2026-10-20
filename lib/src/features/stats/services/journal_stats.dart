@@ -70,6 +70,33 @@ final class JournalStats {
     ];
   }
 
+  /// Running word total at the end of each of the last [days] local days,
+  /// oldest first. The last element equals the all-time word count, so a
+  /// trend line drawn from it ends at the headline figure.
+  static List<int> cumulativeWords(
+    List<JournalEntry> entries, {
+    required DateTime now,
+    int days = trendDays,
+  }) {
+    final today = _dateOnly(now);
+    final start = _addDays(today, -(days - 1));
+    var before = 0;
+    final perDay = <DateTime, int>{};
+    for (final entry in entries) {
+      final words = wordCount('${entry.title} ${entry.body}');
+      if (entry.localDate.isBefore(start)) {
+        before += words;
+      } else {
+        perDay.update(entry.localDate, (n) => n + words, ifAbsent: () => words);
+      }
+    }
+    var running = before;
+    return [
+      for (var i = days - 1; i >= 0; i--)
+        running += perDay[_addDays(today, -i)] ?? 0,
+    ];
+  }
+
   static int wordCount(String text) =>
       text.split(RegExp(r'\s+')).where((w) => w.isNotEmpty).length;
 

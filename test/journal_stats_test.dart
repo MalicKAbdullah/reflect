@@ -225,4 +225,17 @@ void main() {
       expect(stats.entriesPerWeek[6].count, 1);
     });
   });
+
+  test('cumulative words end at the all-time total', () {
+    final trend = JournalStats.cumulativeWords(
+      [
+        entry('old', DateTime(2026, 1, 1)), // before the window: 3 words
+        entry('a', DateTime(2026, 7, 1, 9), body: 'one two'),
+        entry('b', now, body: 'one'),
+      ],
+      now: now,
+      days: 3,
+    );
+    expect(trend, [5, 5, 6]);
+  });
 }
