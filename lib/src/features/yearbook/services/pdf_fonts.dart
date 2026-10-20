@@ -20,12 +20,12 @@ final class PdfFontBytes {
   final Uint8List bold;
 
   /// Monochrome (glyf) emoji face, wired in as a font fallback so mood
-  /// emojis and any emoji the user typed render in the PDF — Inter has no
-  /// emoji glyphs.
+  /// emojis and any emoji the user typed render in the PDF — Mona Sans has
+  /// no emoji glyphs.
   final Uint8List emoji;
 }
 
-/// Loads (and caches) the Inter faces bundled with `core_theme`, so the PDF
+/// Loads (and caches) the Mona Sans faces bundled with `core_theme`, so the PDF
 /// uses the same typeface as the app and covers far more of Unicode than
 /// the built-in Latin-1 Helvetica, plus the bundled Noto emoji face used as
 /// a fallback for emoji glyphs.
@@ -42,9 +42,9 @@ abstract final class PdfFontLoader {
     if (cached != null) return cached;
 
     final results = await Future.wait([
-      rootBundle.load('$_package/Inter-Regular.ttf'),
-      rootBundle.load('$_package/Inter-SemiBold.ttf'),
-      rootBundle.load('$_package/Inter-Bold.ttf'),
+      rootBundle.load('$_package/MonaSans-Regular.ttf'),
+      rootBundle.load('$_package/MonaSans-SemiBold.ttf'),
+      rootBundle.load('$_package/MonaSans-Bold.ttf'),
       rootBundle.load(emojiAsset),
     ]);
 
