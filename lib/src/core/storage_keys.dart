@@ -11,6 +11,8 @@ abstract final class ReflectKeys {
   static const String writingGoal = 'reflect_writing_goal';
   static const String dailyReminder = 'reflect_daily_reminder';
   static const String onboardingSeen = 'reflect_onboarding_seen';
+  static const String recoveryWrap = 'reflect_recovery_wrap';
+  static const String recoveryOffered = 'reflect_recovery_offered';
 
   static const List<String> all = [
     salt,
@@ -23,5 +25,7 @@ abstract final class ReflectKeys {
     writingGoal,
     dailyReminder,
     onboardingSeen,
+    recoveryWrap,
+    recoveryOffered,
   ];
 }

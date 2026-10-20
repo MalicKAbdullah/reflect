@@ -224,4 +224,108 @@ void main() {
       expect(await auth.hasPin(), isFalse);
     });
   });
+
+  group('recovery key', () {
+    JournalRepository repo() =>
+        JournalRepository(fileStore: fileStore, cipher: const CipherService());
+
+    final entry = JournalEntry(
+      id: 'r',
+      title: 'Kept',
+      body: 'Survives a reset',
+      mood: 3,
+      tags: const [],
+      createdAt: DateTime(2026, 7, 1),
+      updatedAt: DateTime(2026, 7, 1),
+    );
+
+    test('resets a forgotten PIN with the journal intact', () async {
+      final setup = await auth.setupPin('123456');
+      await repo().save([entry], setup.key, setup.salt);
+      final recovery = await auth.createRecoveryKey(setup.key);
+      expect(storage.store.values.any((v) => v.contains(recovery)), isFalse);
+
+      final result = await auth.resetPinWithRecoveryKey(
+        recoveryKey: recovery.toLowerCase(),
+        newPin: '999999',
+      );
+      expect(result, isA<RekeySuccess>());
+      expect(await repo().load((result as RekeySuccess).key), [entry]);
+      expect(await auth.unlock('999999'), isA<UnlockSuccess>());
+      expect(await auth.unlock('123456'), isA<UnlockWrongPin>());
+
+      // The same recovery key still works after the reset.
+      expect(
+        await auth.resetPinWithRecoveryKey(
+          recoveryKey: recovery,
+          newPin: '888888',
+        ),
+        isA<RekeySuccess>(),
+      );
+    });
+
+    test('a wrong key is rejected and counts toward the cooldown', () async {
+      final setup = await auth.setupPin('123456');
+      await auth.createRecoveryKey(setup.key);
+      for (var i = 0; i < PinAuthService.maxFreeAttempts; i++) {
+        final r = await auth.resetPinWithRecoveryKey(
+          recoveryKey: RecoveryKey.generate(),
+          newPin: '999999',
+        );
+        expect(r, isA<UnlockWrongPin>());
+      }
+      expect(await auth.unlock('123456'), isA<UnlockCoolingDown>());
+    });
+
+    test('regenerating invalidates the previous key', () async {
+      final setup = await auth.setupPin('123456');
+      final first = await auth.createRecoveryKey(setup.key);
+      final second = await auth.createRecoveryKey(setup.key);
+      expect(
+        await auth.resetPinWithRecoveryKey(recoveryKey: first, newPin: 'x' * 6),
+        isA<UnlockWrongPin>(),
+      );
+      expect(
+        await auth.resetPinWithRecoveryKey(
+          recoveryKey: second,
+          newPin: 'x' * 6,
+        ),
+        isA<RekeySuccess>(),
+      );
+    });
+
+    test('a PIN change drops the recovery wrap it can no longer follow',
+        () async {
+      final setup = await auth.setupPin('123456');
+      final recovery = await auth.createRecoveryKey(setup.key);
+      await auth.changePin(oldPin: '123456', newPin: '777777');
+      expect(await auth.hasRecoveryKey(), isFalse);
+      expect(
+        await auth.resetPinWithRecoveryKey(
+          recoveryKey: recovery,
+          newPin: '999999',
+        ),
+        isA<UnlockWrongPin>(),
+      );
+    });
+
+    test('changePinWithKey re-keys from the session key', () async {
+      final setup = await auth.setupPin('123456');
+      await repo().save([entry], setup.key, setup.salt);
+      final changed =
+          await auth.changePinWithKey(currentKey: setup.key, newPin: '777777');
+      expect(await repo().load(changed.key), [entry]);
+      expect(await auth.unlock('777777'), isA<UnlockSuccess>());
+    });
+
+    test('offer is due once, until marked', () async {
+      final setup = await auth.setupPin('123456');
+      expect(await auth.recoveryOfferDue(), isTrue);
+      await auth.markRecoveryOffered();
+      expect(await auth.recoveryOfferDue(), isFalse);
+      await storage.delete(key: ReflectKeys.recoveryOffered);
+      await auth.createRecoveryKey(setup.key);
+      expect(await auth.recoveryOfferDue(), isFalse);
+    });
+  });
 }

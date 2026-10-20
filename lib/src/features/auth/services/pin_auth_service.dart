@@ -20,6 +20,19 @@ final class UnlockSuccess extends UnlockResult {
   final Uint8List salt;
 }
 
+/// A successful change of the data key (new PIN, or a recovery reset).
+/// [previousKey] still decrypts whatever the caller re-encrypts outside the
+/// journal file (photo attachments); the caller zeroes it afterwards.
+final class RekeySuccess extends UnlockSuccess {
+  const RekeySuccess({
+    required super.key,
+    required super.salt,
+    required this.previousKey,
+  });
+
+  final Uint8List previousKey;
+}
+
 final class UnlockWrongPin extends UnlockResult {
   const UnlockWrongPin({required this.failedAttempts, this.cooldown});
 
@@ -41,6 +54,13 @@ final class UnlockCoolingDown extends UnlockResult {
 /// salt. The PIN itself is never stored; correctness is verified by
 /// decrypting a known sentinel that was encrypted with the derived key
 /// (AES-GCM authentication makes a wrong key fail loudly).
+///
+/// A recovery key (see [RecoveryKey]) wraps the current data key with
+/// [SecretWrapper]; only the wrap is stored. It resets a forgotten PIN by
+/// unwrapping the data key and re-keying under the new PIN. Changing the PIN
+/// changes the data key, which the recovery key cannot follow without being
+/// typed again, so a PIN change drops the wrap and the caller issues a new
+/// recovery key.
 final class PinAuthService {
   PinAuthService({
     required ISecureStorage storage,
@@ -48,17 +68,20 @@ final class PinAuthService {
     required CipherService cipher,
     required IJournalFileStore fileStore,
     required Clock clock,
+    SecretWrapper wrapper = const SecretWrapper(),
   })  : _storage = storage,
         _kdf = keyDerivation,
         _cipher = cipher,
         _fileStore = fileStore,
-        _clock = clock;
+        _clock = clock,
+        _wrapper = wrapper;
 
   final ISecureStorage _storage;
   final IKeyDerivation _kdf;
   final CipherService _cipher;
   final IJournalFileStore _fileStore;
   final Clock _clock;
+  final SecretWrapper _wrapper;
 
   static const String _sentinel = 'reflect:verifier:v1';
   static const int minPinLength = 6;
@@ -114,6 +137,10 @@ final class PinAuthService {
     }
 
     _zero(key);
+    return _recordFailure();
+  }
+
+  Future<UnlockWrongPin> _recordFailure() async {
     final attempts = await _failedAttempts() + 1;
     await _storage.write(
       key: ReflectKeys.failedAttempts,
@@ -153,16 +180,90 @@ final class PinAuthService {
     return diff.isNegative ? Duration.zero : diff;
   }
 
-  /// Changes the PIN: verifies [oldPin], derives a fresh salt + key, and
-  /// re-encrypts the journal file and verifier with the new key.
+  /// Changes the PIN: verifies [oldPin], then re-keys (see [_rekey]).
   Future<UnlockResult> changePin({
     required String oldPin,
     required String newPin,
   }) async {
     final result = await unlock(oldPin);
     if (result is! UnlockSuccess) return result;
+    return changePinWithKey(currentKey: result.key, newPin: newPin);
+  }
 
-    final oldKey = result.key;
+  /// Changes the PIN for a session whose data key is already in memory
+  /// (identity proven by a fresh biometric prompt or the old PIN).
+  Future<RekeySuccess> changePinWithKey({
+    required Uint8List currentKey,
+    required String newPin,
+  }) async {
+    if (!await _verifierMatches(currentKey)) {
+      throw StateError('The session key does not match the verifier');
+    }
+    final result = await _rekey(currentKey, newPin);
+    await _storage.delete(key: ReflectKeys.recoveryWrap);
+    return result;
+  }
+
+  /// Whether a recovery key is set.
+  Future<bool> hasRecoveryKey() async =>
+      await _storage.read(key: ReflectKeys.recoveryWrap) != null;
+
+  /// True when there is no recovery key and none was offered yet.
+  Future<bool> recoveryOfferDue() async =>
+      !await hasRecoveryKey() &&
+      await _storage.read(key: ReflectKeys.recoveryOffered) == null;
+
+  /// Records that the one-time recovery-key offer was shown.
+  Future<void> markRecoveryOffered() =>
+      _storage.write(key: ReflectKeys.recoveryOffered, value: '1');
+
+  /// Creates a recovery key for [dataKey], replacing any earlier one (which
+  /// stops working). Returns it in display form; it is not stored.
+  Future<String> createRecoveryKey(Uint8List dataKey) async {
+    if (!await _verifierMatches(dataKey)) {
+      throw StateError('The session key does not match the verifier');
+    }
+    final recoveryKey = RecoveryKey.generate();
+    await _storage.write(
+      key: ReflectKeys.recoveryWrap,
+      value: await _wrapper.wrap(
+        secret: dataKey,
+        passphrase: RecoveryKey.normalize(recoveryKey)!,
+      ),
+    );
+    return recoveryKey;
+  }
+
+  /// Forgotten PIN: unwraps the data key with [recoveryKey] and re-keys
+  /// under [newPin]; the same recovery key keeps working. Shares the PIN
+  /// cooldown.
+  Future<UnlockResult> resetPinWithRecoveryKey({
+    required String recoveryKey,
+    required String newPin,
+  }) async {
+    final remaining = await cooldownRemaining();
+    if (remaining > Duration.zero) {
+      return UnlockCoolingDown(remaining: remaining);
+    }
+    final wrapped = await _storage.read(key: ReflectKeys.recoveryWrap);
+    final normalized = RecoveryKey.normalize(recoveryKey);
+    final key = wrapped == null || normalized == null
+        ? null
+        : await _wrapper.unwrap(wrapped: wrapped, passphrase: normalized);
+    if (key == null || !await _verifierMatches(key)) return _recordFailure();
+
+    final result = await _rekey(key, newPin);
+    await _storage.write(
+      key: ReflectKeys.recoveryWrap,
+      value: await _wrapper.wrap(secret: result.key, passphrase: normalized!),
+    );
+    await _resetAttempts();
+    return result;
+  }
+
+  /// Derives a fresh salt + key from [newPin] and re-encrypts the journal
+  /// file and verifier with it. The old key can no longer decrypt them.
+  Future<RekeySuccess> _rekey(Uint8List oldKey, String newPin) async {
     final newSalt = await _cipher.generateSalt();
     final newKey = await _kdf.deriveKey(pin: newPin, salt: newSalt);
 
@@ -183,8 +284,7 @@ final class PinAuthService {
 
     await _writeVerifier(newKey, newSalt);
     await _storage.write(key: ReflectKeys.salt, value: base64Encode(newSalt));
-    _zero(oldKey);
-    return UnlockSuccess(key: newKey, salt: newSalt);
+    return RekeySuccess(key: newKey, salt: newSalt, previousKey: oldKey);
   }
 
   /// Erases the journal file and all Reflect secure-storage keys.
