@@ -1,3 +1,4 @@
+import 'package:core_theme/core_theme.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:reflect/src/core/interfaces/reminder_scheduler.dart';
@@ -15,16 +16,22 @@ final class LocalNotificationReminderScheduler implements IReminderScheduler {
     FlutterLocalNotificationsPlugin? plugin,
   }) : _plugin = plugin ?? FlutterLocalNotificationsPlugin();
 
+  /// Status-bar icon: the brand glyph, white on transparent
+  /// (`res/drawable/ic_stat_notify.xml`).
+  static const String _smallIcon = 'ic_stat_notify';
+
   static const int _notificationId = 7001;
 
   static const String title = 'Reflect';
   static const String body = 'A minute for yourself — how was today?';
 
-  static const AndroidNotificationDetails _androidDetails =
+  static final AndroidNotificationDetails _androidDetails =
       AndroidNotificationDetails(
     'daily_reminder',
-    'Daily writing reminder',
-    channelDescription: 'A gentle nudge to write in your journal',
+    'Writing reminders',
+    icon: _smallIcon,
+    color: AppAccents.reflect.light,
+    channelDescription: 'A daily nudge to write, at the time you choose',
     importance: Importance.defaultImportance,
     priority: Priority.defaultPriority,
     category: AndroidNotificationCategory.reminder,
@@ -46,7 +53,7 @@ final class LocalNotificationReminderScheduler implements IReminderScheduler {
     }
 
     const settings = InitializationSettings(
-      android: AndroidInitializationSettings('@mipmap/ic_launcher'),
+      android: AndroidInitializationSettings(_smallIcon),
       iOS: DarwinInitializationSettings(
         requestAlertPermission: false,
         requestBadgePermission: false,
@@ -85,7 +92,7 @@ final class LocalNotificationReminderScheduler implements IReminderScheduler {
       title,
       body,
       tz.TZDateTime.from(next, tz.local),
-      const NotificationDetails(
+      NotificationDetails(
         android: _androidDetails,
         iOS: _darwinDetails,
       ),
