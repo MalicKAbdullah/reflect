@@ -2,6 +2,7 @@ import 'package:core_theme/core_theme.dart';
 import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 import 'package:reflect/src/core/di.dart';
 import 'package:reflect/src/features/entries/providers/entries_providers.dart';
 import 'package:reflect/src/features/goals/providers/goal_providers.dart';
@@ -20,154 +21,137 @@ class StatsScreen extends ConsumerWidget {
       entries,
       now: ref.watch(clockProvider).now(),
     );
-    final theme = Theme.of(context);
-
+    final c = SuiteColors.of(context);
     final goalProgress = ref.watch(goalProgressProvider);
 
     if (entries.isEmpty) {
-      return Scaffold(
-        appBar: AppBar(title: const Text('Stats')),
-        body: const VaultEmptyState(
-          icon: Icons.insights_outlined,
-          message: 'Write a few entries and your\nmood analytics appear here.',
+      return const Scaffold(
+        body: SafeArea(
+          child: AppEmptyState(
+            icon: Icons.insights_outlined,
+            title: 'Nothing to chart yet',
+            message: 'Write a few entries and your mood analytics appear '
+                'here.',
+          ),
         ),
       );
     }
 
+    final words = NumberFormat.decimalPattern().format(stats.totalWords);
     return Scaffold(
-      appBar: AppBar(title: const Text('Stats')),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(
-          AppSpacing.md,
-          AppSpacing.sm,
-          AppSpacing.md,
-          AppSpacing.xxl,
-        ),
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: _StatTile(
-                  label: 'Current streak',
-                  value: '${stats.currentStreak}',
-                  suffix: _dayUnit(stats.currentStreak),
-                ),
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                child: _StatTile(
-                  label: 'Longest streak',
-                  value: '${stats.longestStreak}',
-                  suffix: _dayUnit(stats.longestStreak),
-                ),
-              ),
-            ],
+      body: SafeArea(
+        bottom: false,
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.gutter,
+            AppSpacing.sm,
+            AppSpacing.gutter,
+            AppSpacing.xxl,
           ),
-          const SizedBox(height: AppSpacing.sm),
-          Row(
-            children: [
-              Expanded(
-                child: _StatTile(
-                  label: 'Total words',
-                  value: '${stats.totalWords}',
-                ),
+          children: [
+            Text(
+              'Stats',
+              style: AppTextStyles.h2.copyWith(color: c.textPrimary),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            HeroMetricCard(
+              label: 'Words written',
+              value: Text(
+                words,
+                style: AppTextStyles.hero.copyWith(color: c.textPrimary),
               ),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                child: _StatTile(
-                  label: 'Avg words / entry',
+              deltaCaption: '${stats.totalEntries} '
+                  '${stats.totalEntries == 1 ? 'entry' : 'entries'} in total',
+              trend: [
+                for (final n in JournalStats.dailyEntryCounts(
+                  entries,
+                  now: ref.watch(clockProvider).now(),
+                  days: 30,
+                ))
+                  n.toDouble(),
+              ],
+              footer: [
+                StatTile(
+                  label: 'Streak',
+                  value:
+                      '${stats.currentStreak} ${_dayUnit(stats.currentStreak)}',
+                ),
+                StatTile(
+                  label: 'Longest',
+                  value:
+                      '${stats.longestStreak} ${_dayUnit(stats.longestStreak)}',
+                ),
+                StatTile(
+                  label: 'Avg words',
                   value: stats.avgWordsPerEntry.toStringAsFixed(0),
-                ),
-              ),
-            ],
-          ),
-          if (goalProgress != null) ...[
-            const SizedBox(height: AppSpacing.sm),
-            Row(
-              children: [
-                Expanded(
-                  child: _StatTile(
-                    label: 'Goal met (30 days)',
-                    value: '${goalProgress.daysMet}',
-                    suffix: 'of ${goalProgress.windowDays} days',
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.sm),
-                Expanded(
-                  child: _StatTile(
-                    label: 'Goal streak',
-                    value: '${goalProgress.streak}',
-                    suffix: _dayUnit(goalProgress.streak),
-                  ),
                 ),
               ],
             ),
+            if (goalProgress != null) ...[
+              const SizedBox(height: AppSpacing.smd),
+              Row(
+                children: [
+                  Expanded(
+                    child: MetricCard(
+                      label: 'Goal met',
+                      icon: Icons.flag_outlined,
+                      value: Text(
+                        '${goalProgress.daysMet}',
+                        style: AppTextStyles.numberLarge
+                            .copyWith(color: c.textPrimary),
+                      ),
+                      caption: 'of ${goalProgress.windowDays} days',
+                      visual: AppProgressBar(
+                        value: goalProgress.daysMet / goalProgress.windowDays,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.smd),
+                  Expanded(
+                    child: MetricCard(
+                      label: 'Goal streak',
+                      icon: Icons.local_fire_department_outlined,
+                      value: Text(
+                        '${goalProgress.streak}',
+                        style: AppTextStyles.numberLarge
+                            .copyWith(color: c.textPrimary),
+                      ),
+                      caption: _dayUnit(goalProgress.streak),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+            const SizedBox(height: AppSpacing.md),
+            const SectionHeader(title: 'Mood', subtitle: 'Last 30 days'),
+            VaultCard(
+              child: RepaintBoundary(
+                child: MoodTrendChart(trend: stats.moodTrend),
+              ),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            const SectionHeader(title: 'Mood distribution'),
+            VaultCard(
+              child: RepaintBoundary(
+                child:
+                    MoodDistributionBars(distribution: stats.moodDistribution),
+              ),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            const SectionHeader(
+              title: 'Entries per week',
+              subtitle: 'Last 8 weeks',
+            ),
+            VaultCard(
+              child: RepaintBoundary(
+                child: WeeklyBarChart(weeks: stats.entriesPerWeek),
+              ),
+            ),
           ],
-          const SizedBox(height: AppSpacing.lg),
-          Text('Mood — last 30 days', style: theme.textTheme.titleLarge),
-          const SizedBox(height: AppSpacing.md),
-          VaultCard(
-            child: RepaintBoundary(
-              child: MoodTrendChart(trend: stats.moodTrend),
-            ),
-          ),
-          const SizedBox(height: AppSpacing.lg),
-          Text('Mood distribution', style: theme.textTheme.titleLarge),
-          const SizedBox(height: AppSpacing.md),
-          VaultCard(
-            child: RepaintBoundary(
-              child: MoodDistributionBars(distribution: stats.moodDistribution),
-            ),
-          ),
-          const SizedBox(height: AppSpacing.lg),
-          Text('Entries per week', style: theme.textTheme.titleLarge),
-          const SizedBox(height: AppSpacing.md),
-          VaultCard(
-            child: RepaintBoundary(
-              child: WeeklyBarChart(weeks: stats.entriesPerWeek),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
 
   static String _dayUnit(int count) => count == 1 ? 'day' : 'days';
-}
-
-class _StatTile extends StatelessWidget {
-  const _StatTile({required this.label, required this.value, this.suffix});
-
-  final String label;
-  final String value;
-  final String? suffix;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return VaultCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(label, style: theme.textTheme.labelSmall),
-          const SizedBox(height: AppSpacing.xs),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.baseline,
-            textBaseline: TextBaseline.alphabetic,
-            children: [
-              Text(
-                value,
-                style: AppTextStyles.numberLarge
-                    .copyWith(color: theme.colorScheme.onSurface),
-              ),
-              if (suffix != null) ...[
-                const SizedBox(width: AppSpacing.xs),
-                Text(suffix!, style: theme.textTheme.bodySmall),
-              ],
-            ],
-          ),
-        ],
-      ),
-    );
-  }
 }

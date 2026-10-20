@@ -80,22 +80,22 @@ class _ChangePinScreenState extends ConsumerState<ChangePinScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('Change password')),
       body: ListView(
-        padding: const EdgeInsets.all(AppSpacing.md),
+        padding: const EdgeInsets.all(AppSpacing.gutter),
         children: [
-          VaultTextField(
+          AppTextField(
             label: 'Current password',
             controller: _currentController,
             obscureText: true,
             autofocus: true,
           ),
-          const SizedBox(height: AppSpacing.md),
-          VaultTextField(
+          const SizedBox(height: AppSpacing.smd),
+          AppTextField(
             label: 'New password (6+ characters)',
             controller: _newController,
             obscureText: true,
           ),
-          const SizedBox(height: AppSpacing.md),
-          VaultTextField(
+          const SizedBox(height: AppSpacing.smd),
+          AppTextField(
             label: 'Confirm new password',
             controller: _confirmController,
             obscureText: true,
@@ -106,8 +106,8 @@ class _ChangePinScreenState extends ConsumerState<ChangePinScreen> {
               padding: const EdgeInsets.only(bottom: AppSpacing.md),
               child: Text(
                 _error!,
-                style: TextStyle(
-                  color: Theme.of(context).colorScheme.error,
+                style: AppTextStyles.bodySmall.copyWith(
+                  color: SuiteColors.of(context).negative,
                 ),
               ),
             ),

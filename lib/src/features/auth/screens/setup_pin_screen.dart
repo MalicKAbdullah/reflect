@@ -1,4 +1,5 @@
 import 'package:core_theme/core_theme.dart';
+import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:reflect/src/features/auth/providers/auth_providers.dart';
@@ -48,78 +49,60 @@ class _SetupPinScreenState extends ConsumerState<SetupPinScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final c = SuiteColors.of(context);
     return Scaffold(
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.all(AppSpacing.lg),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 72,
-                  height: 72,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: theme.colorScheme.primaryContainer,
+            padding: const EdgeInsets.all(AppSpacing.gutter),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 420),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const Align(
+                    alignment: Alignment.centerLeft,
+                    child: SuiteAppIcon(app: SuiteApp.reflect, size: 56),
                   ),
-                  child: Icon(
-                    Icons.self_improvement_rounded,
-                    size: 40,
-                    color: theme.colorScheme.primary,
+                  const SizedBox(height: AppSpacing.lg),
+                  Text(
+                    'Welcome to Reflect',
+                    style: AppTextStyles.h1.copyWith(color: c.textPrimary),
                   ),
-                ),
-                const SizedBox(height: AppSpacing.md),
-                Text('Welcome to Reflect',
-                    style: theme.textTheme.headlineMedium),
-                const SizedBox(height: AppSpacing.sm),
-                Text(
-                  'Create a password (6+ characters). It encrypts your '
-                  'journal on this device and cannot be recovered — pick '
-                  'something you will remember.',
-                  textAlign: TextAlign.center,
-                  style: theme.textTheme.bodySmall,
-                ),
-                const SizedBox(height: AppSpacing.xl),
-                TextField(
-                  controller: _password,
-                  obscureText: true,
-                  autofocus: true,
-                  enabled: !_busy,
-                  decoration: const InputDecoration(
-                    labelText: 'Password',
-                    border: OutlineInputBorder(),
+                  const SizedBox(height: AppSpacing.sm),
+                  Text(
+                    'Create a password (6+ characters). It encrypts your '
+                    'journal on this device and cannot be recovered. Pick '
+                    'something you will remember.',
+                    style: AppTextStyles.body.copyWith(color: c.textSecondary),
                   ),
-                ),
-                const SizedBox(height: AppSpacing.md),
-                TextField(
-                  controller: _confirm,
-                  obscureText: true,
-                  enabled: !_busy,
-                  textInputAction: TextInputAction.go,
-                  onSubmitted: (_) => _submit(),
-                  decoration: InputDecoration(
-                    labelText: 'Confirm password',
-                    border: const OutlineInputBorder(),
+                  const SizedBox(height: AppSpacing.xl),
+                  AppTextField(
+                    controller: _password,
+                    label: 'Password',
+                    obscureText: true,
+                    autofocus: true,
+                    enabled: !_busy,
+                  ),
+                  const SizedBox(height: AppSpacing.smd),
+                  AppTextField(
+                    controller: _confirm,
+                    label: 'Confirm password',
+                    obscureText: true,
+                    enabled: !_busy,
                     errorText: _error,
+                    textInputAction: TextInputAction.go,
+                    onSubmitted: (_) => _submit(),
                   ),
-                ),
-                const SizedBox(height: AppSpacing.lg),
-                SizedBox(
-                  width: double.infinity,
-                  child: FilledButton(
+                  const SizedBox(height: AppSpacing.lg),
+                  VaultButton(
+                    label: 'Create password',
+                    isLoading: _busy,
                     onPressed: _busy ? null : _submit,
-                    child: _busy
-                        ? const SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Text('Create password'),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),

@@ -11,21 +11,21 @@ class TagChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
+    final c = SuiteColors.of(context);
     return Material(
-      color: scheme.primaryContainer.withValues(alpha: 0.6),
-      borderRadius: BorderRadius.circular(999),
+      color: c.surfaceAlt,
+      shape: const StadiumBorder(),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(999),
+        customBorder: const StadiumBorder(),
         child: Padding(
           padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.sm + 2,
-            vertical: 3,
+            horizontal: AppSpacing.smd,
+            vertical: 4,
           ),
           child: Text(
             tag,
-            style: AppTextStyles.caption.copyWith(color: scheme.onSurface),
+            style: AppTextStyles.caption.copyWith(color: c.textSecondary),
           ),
         ),
       ),

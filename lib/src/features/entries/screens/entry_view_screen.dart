@@ -37,11 +37,11 @@ class EntryViewScreen extends ConsumerWidget {
       return const Scaffold(body: SizedBox.shrink());
     }
 
-    final theme = Theme.of(context);
+    final c = SuiteColors.of(context);
     final readingStyle = AppTextStyles.body.copyWith(
       fontSize: 17,
       height: 1.65,
-      color: theme.colorScheme.onSurface,
+      color: c.textPrimary,
     );
 
     return Scaffold(
@@ -66,7 +66,10 @@ class EntryViewScreen extends ConsumerWidget {
           _MoodRow(entry: entry, time: _time.format(entry.createdAt)),
           const SizedBox(height: AppSpacing.lg),
           if (entry.title.isNotEmpty) ...[
-            Text(entry.title, style: AppTextStyles.h2),
+            Text(
+              entry.title,
+              style: AppTextStyles.display.copyWith(color: c.textPrimary),
+            ),
             const SizedBox(height: AppSpacing.md),
           ],
           MarkdownEntryBody(data: entry.body, baseStyle: readingStyle),
@@ -102,16 +105,16 @@ class _MoodRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final c = SuiteColors.of(context);
     return Row(
       children: [
         Container(
           padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.sm + 2,
+            horizontal: AppSpacing.smd,
             vertical: AppSpacing.xs + 2,
           ),
           decoration: BoxDecoration(
-            color: Mood.container(entry.mood, theme.brightness),
+            color: Mood.container(entry.mood, Theme.of(context).brightness),
             borderRadius: BorderRadius.circular(999),
           ),
           child: Row(
@@ -124,14 +127,13 @@ class _MoodRow extends StatelessWidget {
               const SizedBox(width: AppSpacing.xs),
               Text(
                 Mood.label(entry.mood),
-                style: AppTextStyles.caption
-                    .copyWith(color: theme.colorScheme.onSurface),
+                style: AppTextStyles.labelStrong.copyWith(color: c.textPrimary),
               ),
             ],
           ),
         ),
         const SizedBox(width: AppSpacing.sm),
-        Text(time, style: theme.textTheme.labelSmall),
+        Text(time, style: AppTextStyles.label.copyWith(color: c.textTertiary)),
       ],
     );
   }

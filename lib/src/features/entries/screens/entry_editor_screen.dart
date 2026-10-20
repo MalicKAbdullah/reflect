@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:core_theme/core_theme.dart';
+import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -252,7 +253,7 @@ class _EntryEditorScreenState extends ConsumerState<EntryEditorScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final c = SuiteColors.of(context);
     final prompt = WritingPrompts.forDate(ref.watch(clockProvider).now());
     return Scaffold(
       appBar: AppBar(
@@ -262,7 +263,10 @@ class _EntryEditorScreenState extends ConsumerState<EntryEditorScreen> {
             Padding(
               padding: const EdgeInsets.only(right: AppSpacing.xs),
               child: Center(
-                child: Text('Draft saved', style: theme.textTheme.labelSmall),
+                child: Text(
+                  'Draft saved',
+                  style: AppTextStyles.caption.copyWith(color: c.textTertiary),
+                ),
               ),
             ),
           IconButton(
@@ -285,31 +289,35 @@ class _EntryEditorScreenState extends ConsumerState<EntryEditorScreen> {
         ],
       ),
       body: ListView(
-        padding: const EdgeInsets.all(AppSpacing.md),
+        padding: const EdgeInsets.all(AppSpacing.gutter),
         children: [
           if (widget.isNew)
-            Container(
-              padding: const EdgeInsets.all(AppSpacing.md),
-              margin: const EdgeInsets.only(bottom: AppSpacing.md),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(AppSpacing.borderRadius),
-                border: Border.all(color: theme.colorScheme.outline),
-              ),
-              child: Row(
-                children: [
-                  Icon(Icons.tips_and_updates_outlined,
-                      size: 20, color: theme.colorScheme.onSurfaceVariant),
-                  const SizedBox(width: AppSpacing.sm),
-                  Expanded(
-                    child: Text(prompt, style: theme.textTheme.bodySmall),
-                  ),
-                ],
+            Padding(
+              padding: const EdgeInsets.only(bottom: AppSpacing.md),
+              child: VaultCard(
+                color: c.accentContainer,
+                radius: AppSpacing.radiusMd,
+                padding: const EdgeInsets.all(AppSpacing.md),
+                child: Row(
+                  children: [
+                    Icon(Icons.tips_and_updates_outlined,
+                        size: 20, color: c.accent),
+                    const SizedBox(width: AppSpacing.smd),
+                    Expanded(
+                      child: Text(
+                        prompt,
+                        style: AppTextStyles.bodyMedium
+                            .copyWith(color: c.textPrimary),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           TextField(
             controller: _titleController,
             textCapitalization: TextCapitalization.sentences,
-            style: theme.textTheme.titleLarge,
+            style: AppTextStyles.h4.copyWith(color: c.textPrimary),
             decoration: const InputDecoration(hintText: 'Title (optional)'),
           ),
           const SizedBox(height: AppSpacing.md),
@@ -328,33 +336,31 @@ class _EntryEditorScreenState extends ConsumerState<EntryEditorScreen> {
               maxLines: null,
               minLines: 8,
               keyboardType: TextInputType.multiline,
+              style: AppTextStyles.body.copyWith(color: c.textPrimary),
               decoration: const InputDecoration(
                 hintText: 'What is on your mind?',
-                helperText: 'Markdown supported — tap the eye to preview.',
+                helperText: 'Markdown supported. Tap the eye to preview.',
               ),
             ),
           ] else
-            Container(
-              width: double.infinity,
-              constraints: const BoxConstraints(minHeight: 160),
-              padding: const EdgeInsets.all(AppSpacing.md),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(AppSpacing.borderRadius),
-                border: Border.all(color: theme.colorScheme.outline),
+            VaultCard(
+              child: SizedBox(
+                width: double.infinity,
+                child: _bodyController.text.trim().isEmpty
+                    ? Text(
+                        'Nothing to preview yet.',
+                        style: AppTextStyles.bodySmall
+                            .copyWith(color: c.textTertiary),
+                      )
+                    : MarkdownEntryBody(
+                        data: _bodyController.text,
+                        baseStyle: AppTextStyles.body
+                            .copyWith(color: c.textPrimary, height: 1.6),
+                      ),
               ),
-              child: _bodyController.text.trim().isEmpty
-                  ? Text(
-                      'Nothing to preview yet.',
-                      style: theme.textTheme.bodySmall,
-                    )
-                  : MarkdownEntryBody(
-                      data: _bodyController.text,
-                      baseStyle: theme.textTheme.bodyLarge!,
-                    ),
             ),
-          const SizedBox(height: AppSpacing.lg),
-          Text('How do you feel?', style: theme.textTheme.titleLarge),
-          const SizedBox(height: AppSpacing.sm),
+          const SizedBox(height: AppSpacing.md),
+          const SectionHeader(title: 'How do you feel?'),
           MoodSelector(
             selected: _mood,
             onChanged: (mood) {
@@ -362,18 +368,16 @@ class _EntryEditorScreenState extends ConsumerState<EntryEditorScreen> {
               _scheduleDraftSave();
             },
           ),
-          const SizedBox(height: AppSpacing.lg),
-          Text('Photos', style: theme.textTheme.titleLarge),
-          const SizedBox(height: AppSpacing.sm),
+          const SizedBox(height: AppSpacing.md),
+          const SectionHeader(title: 'Photos'),
           EditorPhotoStrip(
             photoIds: _photoIds,
             busy: _photoBusy,
             onAdd: _addPhoto,
             onRemove: _removePhoto,
           ),
-          const SizedBox(height: AppSpacing.lg),
-          Text('Tags', style: theme.textTheme.titleLarge),
-          const SizedBox(height: AppSpacing.sm),
+          const SizedBox(height: AppSpacing.md),
+          const SectionHeader(title: 'Tags'),
           TagSelector(
             selected: _tags,
             onChanged: (tags) {

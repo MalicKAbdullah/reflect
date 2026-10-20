@@ -54,6 +54,22 @@ final class JournalStats {
   static const int trendDays = 30;
   static const int trendWeeks = 8;
 
+  /// Entries written on each of the last [days] local days, oldest first.
+  static List<int> dailyEntryCounts(
+    List<JournalEntry> entries, {
+    required DateTime now,
+    int days = 14,
+  }) {
+    final today = _dateOnly(now);
+    final counts = <DateTime, int>{};
+    for (final entry in entries) {
+      counts.update(entry.localDate, (n) => n + 1, ifAbsent: () => 1);
+    }
+    return [
+      for (var i = days - 1; i >= 0; i--) counts[_addDays(today, -i)] ?? 0,
+    ];
+  }
+
   static int wordCount(String text) =>
       text.split(RegExp(r'\s+')).where((w) => w.isNotEmpty).length;
 
