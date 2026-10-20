@@ -4,7 +4,9 @@ import 'package:core_theme/core_theme.dart';
 import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:reflect/src/core/di.dart';
+import 'package:reflect/src/core/router/app_router.dart';
 import 'package:reflect/src/features/auth/providers/auth_providers.dart';
 import 'package:reflect/src/features/auth/services/pin_auth_service.dart';
 
@@ -185,6 +187,16 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
                         VaultButton(
                           label: 'Unlock',
                           onPressed: _busy || coolingDown ? null : _submit,
+                        ),
+                        TextButton(
+                          onPressed: _busy
+                              ? null
+                              : () => context.go(AppRoutes.recover),
+                          child: Text(
+                            'Forgot password?',
+                            style: AppTextStyles.label
+                                .copyWith(color: c.textSecondary),
+                          ),
                         ),
                         if (offerBiometrics) ...[
                           const SizedBox(height: AppSpacing.sm),

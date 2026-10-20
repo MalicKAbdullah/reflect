@@ -3,11 +3,14 @@ import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:reflect/src/core/router/app_router.dart';
 import 'package:reflect/src/features/auth/providers/auth_providers.dart';
 import 'package:reflect/src/features/auth/services/pin_auth_service.dart';
 
-/// Verifies the current PIN, then re-encrypts the journal and verifier with
-/// a key derived from the new PIN (fresh salt).
+/// Verifies the current PIN — or, in a session opened with a fingerprint, a
+/// fresh fingerprint — then re-encrypts the journal, photos and verifier with
+/// a key derived from the new PIN (fresh salt). An existing recovery key is
+/// replaced and the new one shown.
 class ChangePinScreen extends ConsumerStatefulWidget {
   const ChangePinScreen({super.key});
 
@@ -21,6 +24,8 @@ class _ChangePinScreenState extends ConsumerState<ChangePinScreen> {
   final _confirmController = TextEditingController();
   String? _error;
   bool _busy = false;
+  late final bool _withFingerprint =
+      ref.read(sessionProvider.notifier).unlockedWithBiometrics;
 
   @override
   void dispose() {
@@ -49,9 +54,11 @@ class _ChangePinScreenState extends ConsumerState<ChangePinScreen> {
       _busy = true;
       _error = null;
     });
-    final result = await ref
-        .read(sessionProvider.notifier)
-        .changePin(oldPin: current, newPin: newPin);
+    final (result, recoveryKey) =
+        await ref.read(sessionProvider.notifier).changePin(
+              oldPin: _withFingerprint ? null : current,
+              newPin: newPin,
+            );
     if (!mounted) return;
 
     switch (result) {
@@ -61,11 +68,17 @@ class _ChangePinScreenState extends ConsumerState<ChangePinScreen> {
             content: Text('Password changed — journal re-encrypted'),
           ),
         );
+        if (recoveryKey != null) {
+          await context.push(AppRoutes.recoveryKey, extra: recoveryKey);
+          if (!mounted) return;
+        }
         context.pop();
       case UnlockWrongPin():
         setState(() {
           _busy = false;
-          _error = 'Current password is incorrect';
+          _error = _withFingerprint
+              ? 'Fingerprint not confirmed'
+              : 'Current password is incorrect';
         });
       case UnlockCoolingDown(:final remaining):
         setState(() {
@@ -82,12 +95,20 @@ class _ChangePinScreenState extends ConsumerState<ChangePinScreen> {
       body: ListView(
         padding: const EdgeInsets.all(AppSpacing.gutter),
         children: [
-          AppTextField(
-            label: 'Current password',
-            controller: _currentController,
-            obscureText: true,
-            autofocus: true,
-          ),
+          if (_withFingerprint)
+            Text(
+              "You'll confirm with your fingerprint when you save.",
+              style: AppTextStyles.bodySmall.copyWith(
+                color: SuiteColors.of(context).textSecondary,
+              ),
+            )
+          else
+            AppTextField(
+              label: 'Current password',
+              controller: _currentController,
+              obscureText: true,
+              autofocus: true,
+            ),
           const SizedBox(height: AppSpacing.smd),
           AppTextField(
             label: 'New password (6+ characters)',

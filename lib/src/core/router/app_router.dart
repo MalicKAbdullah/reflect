@@ -1,8 +1,10 @@
+import 'package:core_lock/core_lock.dart' show RecoveryKeyView;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:reflect/src/core/shell/home_shell.dart';
 import 'package:reflect/src/features/auth/providers/auth_providers.dart';
+import 'package:reflect/src/features/auth/screens/recovery_screens.dart';
 import 'package:reflect/src/features/auth/screens/setup_pin_screen.dart';
 import 'package:reflect/src/features/auth/screens/unlock_screen.dart';
 import 'package:reflect/src/features/calendar/screens/calendar_screen.dart';
@@ -32,6 +34,11 @@ abstract final class AppRoutes {
   static const String changePin = '/change-pin';
   static const String backup = '/backup';
   static const String manageTags = '/tags';
+  static const String recover = '/recover';
+  static const String recoveryOffer = '/recovery-offer';
+
+  /// Shows a newly created recovery key passed as `extra`.
+  static const String recoveryKey = '/recovery-key';
 
   static String viewEntry(String id) => '/entry/$id';
 
@@ -63,12 +70,21 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         case AuthStatus.needsSetup:
           return location == AppRoutes.setup ? null : AppRoutes.setup;
         case AuthStatus.locked:
-          return location == AppRoutes.unlock ? null : AppRoutes.unlock;
+          return location == AppRoutes.unlock || location == AppRoutes.recover
+              ? null
+              : AppRoutes.unlock;
         case AuthStatus.unlocked:
+          if (ref.read(sessionProvider.notifier).recoveryOfferDue) {
+            return location == AppRoutes.recoveryOffer
+                ? null
+                : AppRoutes.recoveryOffer;
+          }
           final gate = location == AppRoutes.splash ||
               location == AppRoutes.welcome ||
               location == AppRoutes.setup ||
-              location == AppRoutes.unlock;
+              location == AppRoutes.unlock ||
+              location == AppRoutes.recover ||
+              location == AppRoutes.recoveryOffer;
           return gate ? AppRoutes.timeline : null;
       }
     },
@@ -89,6 +105,26 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.unlock,
         builder: (_, __) => const UnlockScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.recover,
+        builder: (_, __) => const RecoverScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.recoveryOffer,
+        builder: (_, __) => const RecoveryOfferScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.recoveryKey,
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => PopScope(
+          canPop: false,
+          child: RecoveryKeyView(
+            recoveryKey: state.extra! as String,
+            appName: 'Reflect',
+            onDone: () => context.pop(),
+          ),
+        ),
       ),
       GoRoute(
         path: AppRoutes.newEntry,
