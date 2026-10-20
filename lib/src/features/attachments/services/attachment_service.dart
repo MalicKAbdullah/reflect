@@ -110,6 +110,23 @@ final class AttachmentService {
     }
   }
 
+  /// Re-encrypts every stored photo from [oldKey] to [newKey] after the data
+  /// key changes (PIN change, recovery reset). A photo [oldKey] cannot
+  /// authenticate is left as it is.
+  Future<void> rekey({
+    required Uint8List oldKey,
+    required Uint8List newKey,
+    required Uint8List newSalt,
+  }) async {
+    clearCache();
+    for (final id in await _store.list()) {
+      final bytes = await loadPhoto(id: id, key: oldKey);
+      if (bytes == null) continue;
+      await _writeEncrypted(id, bytes, newKey, newSalt);
+    }
+    clearCache();
+  }
+
   /// Deletes stored attachments that no entry references any more.
   Future<void> sweepOrphans(Set<String> referencedIds) async {
     for (final id in await _store.list()) {

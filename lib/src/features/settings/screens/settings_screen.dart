@@ -12,6 +12,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:reflect/src/core/app_info.dart';
 import 'package:reflect/src/core/router/app_router.dart';
 import 'package:reflect/src/features/auth/providers/auth_providers.dart';
+import 'package:reflect/src/features/auth/widgets/confirm_owner.dart';
 import 'package:reflect/src/features/auth/providers/biometric_providers.dart';
 import 'package:reflect/src/features/settings/providers/settings_providers.dart';
 import 'package:reflect/src/features/entries/providers/entries_providers.dart';
@@ -67,6 +68,12 @@ class SettingsScreen extends ConsumerWidget {
                   title: 'Change password',
                   subtitle: 'Your journal is re-secured with it',
                   onTap: () => context.push(AppRoutes.changePin),
+                ),
+                SettingsTile(
+                  icon: Icons.key_outlined,
+                  title: 'Recovery key',
+                  subtitle: 'Resets a forgotten password',
+                  onTap: () => _newRecoveryKey(context, ref),
                 ),
                 if (biometricSupported)
                   SettingsTile(
@@ -154,6 +161,11 @@ class SettingsScreen extends ConsumerWidget {
             AutoBackupSection(
               service: ref.watch(autoBackupServiceProvider),
               producer: ref.watch(reflectBackupProducerProvider),
+              onRevealGate: () => confirmOwner(
+                context,
+                ref,
+                reason: 'Show your backup passphrase',
+              ),
             ),
             const SizedBox(height: AppSpacing.md),
             const SectionHeader(title: 'Danger zone'),
@@ -190,6 +202,41 @@ class SettingsScreen extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  /// Re-auth, confirm replacing any current key, then show the new one.
+  Future<void> _newRecoveryKey(BuildContext context, WidgetRef ref) async {
+    if (!await confirmOwner(context, ref, reason: 'Create a new recovery key')) {
+      return;
+    }
+    if (await ref.read(pinAuthServiceProvider).hasRecoveryKey()) {
+      if (!context.mounted) return;
+      final replace = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Replace your recovery key?'),
+          content: const Text(
+            'Your current recovery key will stop working. Recovery keys are '
+            'never stored, so the current one cannot be shown again.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Create new key'),
+            ),
+          ],
+        ),
+      );
+      if (replace != true) return;
+    }
+    final key = await ref.read(sessionProvider.notifier).createRecoveryKey();
+    if (context.mounted) {
+      await context.push(AppRoutes.recoveryKey, extra: key);
+    }
   }
 
   Future<void> _toggleBiometrics(

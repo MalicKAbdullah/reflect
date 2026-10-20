@@ -132,6 +132,20 @@ void main() {
       expect(await service.loadPhoto(id: id, key: wrongKey), isNull);
     });
 
+    test('rekey moves photos to the new key', () async {
+      final id = (await service.importPhoto(
+        original: testJpeg(),
+        key: key,
+        salt: salt,
+      ))!;
+      final newKey = Uint8List.fromList(List.generate(32, (i) => i + 1));
+      await service.rekey(oldKey: key, newKey: newKey, newSalt: salt);
+
+      expect(await service.loadPhoto(id: id, key: newKey), isNotNull);
+      service.clearCache();
+      expect(await service.loadPhoto(id: id, key: key), isNull);
+    });
+
     test('deletePhotos removes files and cache entries', () async {
       final id = (await service.importPhoto(
         original: testJpeg(),
