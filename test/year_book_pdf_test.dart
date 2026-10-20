@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
@@ -12,35 +13,32 @@ import 'package:reflect/src/features/yearbook/services/year_book_pdf_service.dar
 
 PdfFontBytes? _fontCache;
 
-/// Loads the Inter faces from the `core_theme` font files and the bundled
-/// Noto emoji font, so PDF tests stay pure Dart — no asset bundle, no
-/// platform channels. Inter resolves via the monorepo path (local) or a git
-/// dependency (CI); the emoji font lives in this app's assets directory.
+/// Loads the Mona Sans faces from the `core_theme` font files and the
+/// bundled Noto emoji font, so PDF tests stay pure Dart: no asset bundle,
+/// no platform channels. The `core_theme` directory comes from the package
+/// config, so it resolves the same for path and git dependencies.
 PdfFontBytes loadTestFonts() {
   final dir = _resolveFontsDir();
   return _fontCache ??= PdfFontBytes(
-    regular: File('$dir/Inter-Regular.ttf').readAsBytesSync(),
-    semiBold: File('$dir/Inter-SemiBold.ttf').readAsBytesSync(),
-    bold: File('$dir/Inter-Bold.ttf').readAsBytesSync(),
+    regular: File('$dir/MonaSans-Regular.ttf').readAsBytesSync(),
+    semiBold: File('$dir/MonaSans-SemiBold.ttf').readAsBytesSync(),
+    bold: File('$dir/MonaSans-Bold.ttf').readAsBytesSync(),
     emoji: File('assets/fonts/NotoEmoji-Regular.ttf').readAsBytesSync(),
   );
 }
 
 String _resolveFontsDir() {
-  const local = '../../packages/core_theme/fonts';
-  if (File('$local/Inter-Regular.ttf').existsSync()) return local;
-  final pubCache = Platform.environment['PUB_CACHE'] ??
-      '${Platform.environment['HOME']}/.pub-cache';
-  final gitDir = Directory('$pubCache/git');
-  if (gitDir.existsSync()) {
-    for (final entry in gitDir.listSync()) {
-      if (entry is Directory && entry.path.contains('secure-suite-core')) {
-        final fonts = '${entry.path}/core_theme/fonts';
-        if (File('$fonts/Inter-Regular.ttf').existsSync()) return fonts;
-      }
-    }
-  }
-  throw StateError('Could not locate core_theme Inter fonts for PDF tests.');
+  final configFile = File('.dart_tool/package_config.json');
+  final config =
+      jsonDecode(configFile.readAsStringSync()) as Map<String, dynamic>;
+  final package = (config['packages'] as List)
+      .cast<Map<String, dynamic>>()
+      .firstWhere((p) => p['name'] == 'core_theme');
+  final rootUri = package['rootUri'] as String;
+  final root = configFile.uri.resolve(
+    rootUri.endsWith('/') ? rootUri : '$rootUri/',
+  );
+  return root.resolve('fonts').toFilePath();
 }
 
 /// A tiny but valid JPEG, standing in for decrypted photo bytes.
@@ -83,8 +81,7 @@ void main() {
           .pages
           .length;
 
-  test('renders valid PDF bytes with cover stats and markdown body',
-      () async {
+  test('renders valid PDF bytes with cover stats and markdown body', () async {
     final bytes = await YearBookPdfService.render(
       YearBookRequest(
         year: 2025,
@@ -109,7 +106,8 @@ void main() {
     expectPdfMagic(bytes);
   });
 
-  test('unicode-heavy entries render with the embedded Inter font', () async {
+  test('unicode-heavy entries render with the embedded Mona Sans font',
+      () async {
     final bytes = await YearBookPdfService.render(
       YearBookRequest(
         year: 2025,
@@ -128,8 +126,7 @@ void main() {
     expectPdfMagic(bytes);
   });
 
-  test('emoji font loads and a PDF builds with emoji in the content',
-      () async {
+  test('emoji font loads and a PDF builds with emoji in the content', () async {
     final fonts = loadTestFonts();
     expect(fonts.emoji, isNotEmpty);
     final bytes = await YearBookPdfService.render(
@@ -150,7 +147,8 @@ void main() {
     expectPdfMagic(bytes);
   });
 
-  test('photo-bearing entries embed images (bigger than the same book '
+  test(
+      'photo-bearing entries embed images (bigger than the same book '
       'without photos)', () async {
     final withPhotos = YearBookRequest(
       year: 2025,
@@ -182,8 +180,7 @@ void main() {
         reason: 'embedding photos should add bytes to the document');
   });
 
-  test('markdown body renders to multiple PDF nodes and valid bytes',
-      () async {
+  test('markdown body renders to multiple PDF nodes and valid bytes', () async {
     final fonts = loadTestFonts();
     final markdown = MarkdownPdf(
       MarkdownPdfTheme(

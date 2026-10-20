@@ -16,9 +16,8 @@ class ReflectApp extends ConsumerWidget {
     final router = ref.watch(appRouterProvider);
     return MaterialApp.router(
       title: 'Reflect',
-      theme: AppTheme.build(Brightness.light, accent: AppColors.violetAccent),
-      darkTheme:
-          AppTheme.build(Brightness.dark, accent: AppColors.violetAccent),
+      theme: AppTheme.build(Brightness.light, accent: AppAccents.reflect),
+      darkTheme: AppTheme.build(Brightness.dark, accent: AppAccents.reflect),
       themeMode: ThemeMode.system,
       routerConfig: router,
       debugShowCheckedModeBanner: false,

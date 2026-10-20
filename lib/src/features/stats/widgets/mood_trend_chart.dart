@@ -12,7 +12,7 @@ class MoodTrendChart extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final c = SuiteColors.of(context);
     final spots = <FlSpot>[
       for (var i = 0; i < trend.length; i++)
         if (trend[i].average != null) FlSpot(i.toDouble(), trend[i].average!),
@@ -23,12 +23,13 @@ class MoodTrendChart extends StatelessWidget {
         child: Center(
           child: Text(
             'No mood data yet',
-            style: theme.textTheme.bodySmall,
+            style: AppTextStyles.bodySmall.copyWith(color: c.textTertiary),
           ),
         ),
       );
     }
-    final lineColor = theme.colorScheme.primary;
+    final lineColor = c.accent;
+    final labelStyle = AppTextStyles.caption.copyWith(color: c.textTertiary);
     final labelFormat = DateFormat.Md();
 
     return SizedBox(
@@ -43,8 +44,8 @@ class MoodTrendChart extends StatelessWidget {
             drawVerticalLine: false,
             horizontalInterval: 1,
             getDrawingHorizontalLine: (_) => FlLine(
-              color: theme.colorScheme.outline.withValues(alpha: 0.4),
-              strokeWidth: 0.5,
+              color: c.hairline,
+              strokeWidth: 1,
             ),
           ),
           borderData: FlBorderData(show: false),
@@ -62,7 +63,7 @@ class MoodTrendChart extends StatelessWidget {
                   }
                   return Text(
                     value.toInt().toString(),
-                    style: theme.textTheme.labelSmall,
+                    style: labelStyle,
                   );
                 },
               ),
@@ -74,14 +75,16 @@ class MoodTrendChart extends StatelessWidget {
                 reservedSize: 24,
                 getTitlesWidget: (value, meta) {
                   final index = value.toInt();
-                  if (index < 0 || index >= trend.length) {
+                  if (index < 0 ||
+                      index >= trend.length ||
+                      index > trend.length - 4) {
                     return const SizedBox.shrink();
                   }
                   return Padding(
                     padding: const EdgeInsets.only(top: AppSpacing.xs),
                     child: Text(
                       labelFormat.format(trend[index].date),
-                      style: theme.textTheme.labelSmall,
+                      style: labelStyle,
                     ),
                   );
                 },
@@ -96,17 +99,11 @@ class MoodTrendChart extends StatelessWidget {
               preventCurveOverShooting: true,
               color: lineColor,
               barWidth: 2.5,
-              dotData: FlDotData(
-                getDotPainter: (spot, percent, bar, index) =>
-                    FlDotCirclePainter(
-                  radius: 2.5,
-                  color: lineColor,
-                  strokeWidth: 0,
-                ),
-              ),
+              isStrokeCapRound: true,
+              dotData: const FlDotData(show: false),
               belowBarData: BarAreaData(
                 show: true,
-                color: lineColor.withValues(alpha: 0.06),
+                color: lineColor.withValues(alpha: 0.08),
               ),
             ),
           ],

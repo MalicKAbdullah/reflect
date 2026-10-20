@@ -14,11 +14,11 @@ abstract final class Mood {
     'Great',
   ];
 
-  /// A soft 5-step ramp (coral → amber → mist → sage → teal). Mid-tone
+  /// A soft 5-step ramp (coral → gold → mist → sage → teal). Mid-tone
   /// values chosen to read as accents on both light and dark surfaces.
   static const List<Color> _colors = [
     Color(0xFFE57373), // rough — soft coral
-    Color(0xFFEFA94E), // low — warm amber
+    Color(0xFFD9B13E), // low — soft gold
     Color(0xFF94A3B8), // okay — cool mist gray
     Color(0xFF81C784), // good — sage green
     Color(0xFF4DB6AC), // great — calm teal

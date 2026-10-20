@@ -42,6 +42,9 @@ void main() {
     WidgetTester tester,
     List<JournalEntry> entries,
   ) async {
+    // Tall enough for the streak hero plus the lazily built entry list.
+    tester.view.physicalSize = const Size(800, 3000);
+    addTearDown(tester.view.reset);
     await tester.pumpWidget(
       ProviderScope(
         overrides: [

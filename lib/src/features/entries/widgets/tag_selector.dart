@@ -1,4 +1,5 @@
 import 'package:core_theme/core_theme.dart';
+import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:reflect/src/features/entries/models/mood.dart';
 
@@ -30,11 +31,11 @@ class _TagSelectorState extends State<TagSelector> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Custom tag'),
-        content: TextField(
+        content: AppTextField(
           controller: controller,
           autofocus: true,
           textInputAction: TextInputAction.done,
-          decoration: const InputDecoration(hintText: 'e.g. inspired'),
+          hint: 'e.g. inspired',
           onSubmitted: (value) => Navigator.of(context).pop(value),
         ),
         actions: [
@@ -67,15 +68,15 @@ class _TagSelectorState extends State<TagSelector> {
       runSpacing: AppSpacing.sm,
       children: [
         for (final tag in [...Mood.presetTags, ...custom])
-          FilterChip(
-            label: Text(tag),
+          AppChip(
+            label: tag,
             selected: widget.selected.contains(tag),
-            onSelected: (_) => _toggle(tag),
+            onTap: () => _toggle(tag),
           ),
-        ActionChip(
-          avatar: const Icon(Icons.add, size: 18),
-          label: const Text('custom'),
-          onPressed: _addCustom,
+        AppChip(
+          icon: Icons.add,
+          label: 'custom',
+          onTap: _addCustom,
         ),
       ],
     );

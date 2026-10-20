@@ -4,7 +4,7 @@ import 'package:markdown/markdown.dart' as md;
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
-/// Fonts + colors the [MarkdownPdf] renderer needs. Inter ships no italic
+/// Fonts + colors the [MarkdownPdf] renderer needs. Mona Sans ships no italic
 /// face, so emphasis borrows the semi-bold weight; code uses the built-in
 /// Courier monospace with the text fonts as fallbacks.
 final class MarkdownPdfTheme {

@@ -4,6 +4,7 @@ import 'dart:typed_data';
 
 import 'package:core_backup/core_backup.dart';
 import 'package:core_theme/core_theme.dart';
+import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -28,7 +29,7 @@ class SettingsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
+    final c = SuiteColors.of(context);
     final autoLock = ref.watch(autoLockProvider);
     final biometricSupported =
         ref.watch(biometricSupportedProvider).valueOrNull ?? false;
@@ -42,121 +43,151 @@ class SettingsScreen extends ConsumerWidget {
     );
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Settings')),
-      body: ListView(
-        padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
-        children: [
-          const _SectionLabel('Security'),
-          ListTile(
-            leading: const Icon(Icons.password_outlined),
-            title: const Text('Change password'),
-            subtitle: const Text('Your journal is re-secured with it'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => context.push(AppRoutes.changePin),
+      body: SafeArea(
+        bottom: false,
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.gutter,
+            AppSpacing.sm,
+            AppSpacing.gutter,
+            AppSpacing.xxl,
           ),
-          if (biometricSupported)
-            SwitchListTile(
-              secondary: const Icon(Icons.fingerprint_rounded),
-              title: const Text('Fingerprint unlock'),
-              subtitle:
-                  const Text('Use a fingerprint instead of your password'),
-              value: biometricEnabled,
-              onChanged: (next) => _toggleBiometrics(context, ref, next),
+          children: [
+            Text(
+              'Settings',
+              style: AppTextStyles.h2.copyWith(color: c.textPrimary),
             ),
-          ListTile(
-            leading: const Icon(Icons.timer_outlined),
-            title: const Text('Auto-lock after'),
-            subtitle: Text(AutoLockNotifier.labelFor(autoLock)),
-            onTap: () => _pickAutoLock(context, ref, autoLock),
-          ),
-          ListTile(
-            leading: const Icon(Icons.lock_outline),
-            title: const Text('Lock now'),
-            onTap: () => ref.read(sessionProvider.notifier).lock(),
-          ),
-          const Divider(height: AppSpacing.lg),
-          const _SectionLabel('Updates'),
-          const _UpdateSection(),
-          const Divider(height: AppSpacing.lg),
-          const _SectionLabel('Journal'),
-          ListTile(
-            leading: const Icon(Icons.flag_outlined),
-            title: const Text('Daily writing goal'),
-            subtitle: Text(goal?.description ?? 'Off'),
-            onTap: () => showGoalPickerSheet(context, ref),
-          ),
-          SwitchListTile(
-            secondary: const Icon(Icons.notifications_outlined),
-            title: const Text('Daily reminder'),
-            subtitle: Text(
-              reminder.enabled
-                  ? 'Every day at ${reminderTime.format(context)}'
-                  : 'A gentle nudge to write each evening',
+            const SizedBox(height: AppSpacing.sm),
+            const SizedBox(height: AppSpacing.md),
+            const SectionHeader(title: 'Security'),
+            RowGroup(
+              children: [
+                SettingsTile(
+                  icon: Icons.password_outlined,
+                  title: 'Change password',
+                  subtitle: 'Your journal is re-secured with it',
+                  onTap: () => context.push(AppRoutes.changePin),
+                ),
+                if (biometricSupported)
+                  SettingsTile(
+                    icon: Icons.fingerprint_rounded,
+                    title: 'Fingerprint unlock',
+                    subtitle: 'Use a fingerprint instead of your password',
+                    trailing: Switch(
+                      value: biometricEnabled,
+                      onChanged: (next) =>
+                          _toggleBiometrics(context, ref, next),
+                    ),
+                  ),
+                SettingsTile(
+                  icon: Icons.timer_outlined,
+                  title: 'Auto-lock after',
+                  subtitle: AutoLockNotifier.labelFor(autoLock),
+                  onTap: () => _pickAutoLock(context, ref, autoLock),
+                ),
+                SettingsTile(
+                  icon: Icons.lock_outline,
+                  title: 'Lock now',
+                  onTap: () => ref.read(sessionProvider.notifier).lock(),
+                ),
+              ],
             ),
-            value: reminder.enabled,
-            onChanged: (next) => _toggleReminder(context, ref, next),
-          ),
-          if (reminder.enabled)
-            ListTile(
-              leading: const SizedBox.shrink(),
-              title: const Text('Reminder time'),
-              subtitle: Text(reminderTime.format(context)),
-              trailing: const Icon(Icons.schedule_outlined),
-              onTap: () => _pickReminderTime(context, ref, reminderTime),
+            const SizedBox(height: AppSpacing.md),
+            const SectionHeader(title: 'Updates'),
+            const _UpdateSection(),
+            const SizedBox(height: AppSpacing.md),
+            const SectionHeader(title: 'Journal'),
+            RowGroup(
+              children: [
+                SettingsTile(
+                  icon: Icons.flag_outlined,
+                  title: 'Daily writing goal',
+                  subtitle: goal?.description ?? 'Off',
+                  onTap: () => showGoalPickerSheet(context, ref),
+                ),
+                SettingsTile(
+                  icon: Icons.notifications_outlined,
+                  title: 'Daily reminder',
+                  subtitle: reminder.enabled
+                      ? 'Every day at ${reminderTime.format(context)}'
+                      : 'A nudge to write each evening',
+                  trailing: Switch(
+                    value: reminder.enabled,
+                    onChanged: (next) => _toggleReminder(context, ref, next),
+                  ),
+                ),
+                if (reminder.enabled)
+                  SettingsTile(
+                    icon: Icons.schedule_outlined,
+                    title: 'Reminder time',
+                    subtitle: reminderTime.format(context),
+                    onTap: () => _pickReminderTime(context, ref, reminderTime),
+                  ),
+                SettingsTile(
+                  icon: Icons.label_outline,
+                  title: 'Tags',
+                  subtitle: 'Browse, rename, or remove tags',
+                  onTap: () => context.push(AppRoutes.manageTags),
+                ),
+              ],
             ),
-          ListTile(
-            leading: const Icon(Icons.label_outline),
-            title: const Text('Tags'),
-            subtitle: const Text('Browse, rename, or remove tags'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => context.push(AppRoutes.manageTags),
-          ),
-          ListTile(
-            leading: const Icon(Icons.archive_outlined),
-            title: const Text('Backup'),
-            subtitle: const Text('Export or restore an encrypted backup'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => context.push(AppRoutes.backup),
-          ),
-          const _SectionLabel('Automatic backup'),
-          AutoBackupSection(
-            service: ref.watch(autoBackupServiceProvider),
-            producer: ref.watch(reflectBackupProducerProvider),
-          ),
-          ListTile(
-            leading: const Icon(Icons.auto_stories_outlined),
-            title: const Text('Export year book (PDF)'),
-            subtitle: const Text('A year of entries as a beautiful PDF'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => _exportYearBook(context, ref),
-          ),
-          const Divider(height: AppSpacing.lg),
-          const _SectionLabel('Danger zone'),
-          ListTile(
-            leading: Icon(Icons.delete_forever_outlined,
-                color: theme.colorScheme.error),
-            title: Text(
-              'Erase all data',
-              style: TextStyle(color: theme.colorScheme.error),
+            const SizedBox(height: AppSpacing.md),
+            const SectionHeader(title: 'Backup and export'),
+            RowGroup(
+              children: [
+                SettingsTile(
+                  icon: Icons.archive_outlined,
+                  title: 'Backup',
+                  subtitle: 'Export or restore an encrypted backup',
+                  onTap: () => context.push(AppRoutes.backup),
+                ),
+                SettingsTile(
+                  icon: Icons.auto_stories_outlined,
+                  title: 'Export year book (PDF)',
+                  subtitle: 'A year of entries as a beautiful PDF',
+                  onTap: () => _exportYearBook(context, ref),
+                ),
+              ],
             ),
-            subtitle: const Text(
-              'Permanently deletes your journal and password',
+            const SizedBox(height: AppSpacing.md),
+            const SectionHeader(title: 'Automatic backup'),
+            AutoBackupSection(
+              service: ref.watch(autoBackupServiceProvider),
+              producer: ref.watch(reflectBackupProducerProvider),
             ),
-            onTap: () => _confirmErase(context, ref),
-          ),
-          const Divider(height: AppSpacing.lg),
-          const _SectionLabel('About'),
-          const ListTile(
-            leading: Icon(Icons.self_improvement_rounded),
-            title: Text('Reflect'),
-            subtitle: Text('Version ${AppInfo.version}'),
-          ),
-          const ListTile(
-            leading: Icon(Icons.shield_outlined),
-            title: Text('Privacy'),
-            subtitle: Text(AppInfo.privacyBlurb),
-          ),
-        ],
+            const SizedBox(height: AppSpacing.md),
+            const SectionHeader(title: 'Danger zone'),
+            RowGroup(
+              children: [
+                SettingsTile(
+                  icon: Icons.delete_forever_outlined,
+                  iconColor: c.negative,
+                  title: 'Erase all data',
+                  subtitle: 'Deletes your journal and password',
+                  onTap: () => _confirmErase(context, ref),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.md),
+            const SectionHeader(title: 'About'),
+            const RowGroup(
+              children: [
+                SettingsTile(
+                  icon: Icons.self_improvement_rounded,
+                  title: 'Reflect',
+                  subtitle: 'Version ${AppInfo.version}',
+                ),
+                SettingsTile(
+                  icon: Icons.shield_outlined,
+                  title: 'Privacy',
+                  subtitle: AppInfo.privacyBlurb,
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            const Center(child: SuiteEndorsement()),
+          ],
+        ),
       ),
     );
   }
@@ -354,29 +385,6 @@ class SettingsScreen extends ConsumerWidget {
   }
 }
 
-class _SectionLabel extends StatelessWidget {
-  const _SectionLabel(this.label);
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(
-        AppSpacing.md,
-        AppSpacing.md,
-        AppSpacing.md,
-        AppSpacing.xs,
-      ),
-      child: Text(
-        label.toUpperCase(),
-        style:
-            Theme.of(context).textTheme.labelSmall!.copyWith(letterSpacing: 1),
-      ),
-    );
-  }
-}
-
 /// "Check for updates on open" toggle + a manual "Check now", backed by
 /// core_update. On by default; the only network call the app makes.
 class _UpdateSection extends ConsumerStatefulWidget {
@@ -415,27 +423,27 @@ class _UpdateSectionState extends ConsumerState<_UpdateSection> {
   @override
   Widget build(BuildContext context) {
     final autoCheck = ref.watch(updateAutoCheckProvider).valueOrNull ?? true;
-    return Column(
+    return RowGroup(
       children: [
-        SwitchListTile(
-          secondary: const Icon(Icons.system_update_alt),
-          title: const Text('Check for updates on open'),
-          subtitle: const Text(
-            'Looks for a new release on GitHub. Nothing is uploaded.',
+        SettingsTile(
+          icon: Icons.system_update_alt,
+          title: 'Check for updates',
+          subtitle: 'Checks GitHub on open. Nothing is uploaded.',
+          trailing: Switch(
+            value: autoCheck,
+            onChanged: (v) async {
+              await ref.read(secureStorageProvider).write(
+                    key: updateAutoCheckKey,
+                    value: v ? 'true' : 'false',
+                  );
+              ref.invalidate(updateAutoCheckProvider);
+              ref.invalidate(updateCheckProvider);
+            },
           ),
-          value: autoCheck,
-          onChanged: (v) async {
-            await ref.read(secureStorageProvider).write(
-                  key: updateAutoCheckKey,
-                  value: v ? 'true' : 'false',
-                );
-            ref.invalidate(updateAutoCheckProvider);
-            ref.invalidate(updateCheckProvider);
-          },
         ),
-        ListTile(
-          leading: const Icon(Icons.refresh),
-          title: const Text('Check now'),
+        SettingsTile(
+          icon: Icons.refresh,
+          title: 'Check now',
           trailing: _checking
               ? const SizedBox(
                   width: 18,

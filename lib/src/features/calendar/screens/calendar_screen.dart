@@ -1,4 +1,5 @@
 import 'package:core_theme/core_theme.dart';
+import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -39,7 +40,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final c = SuiteColors.of(context);
     final entries = ref.watch(entriesProvider).valueOrNull ?? const [];
     final byDay = <DateTime, List<JournalEntry>>{};
     for (final entry in entries) {
@@ -50,69 +51,93 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
         : byDay[_selectedDay!] ?? const <JournalEntry>[];
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Calendar')),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(
-          AppSpacing.md,
-          AppSpacing.sm,
-          AppSpacing.md,
-          96,
-        ),
-        children: [
-          Row(
-            children: [
-              IconButton(
-                icon: const Icon(Icons.chevron_left),
-                onPressed: () => _shiftMonth(-1),
-              ),
-              Expanded(
-                child: Center(
-                  child: Text(
-                    _monthFormat.format(_month),
-                    style: theme.textTheme.titleLarge,
-                  ),
-                ),
-              ),
-              IconButton(
-                icon: const Icon(Icons.chevron_right),
-                onPressed: () => _shiftMonth(1),
-              ),
-            ],
+      body: SafeArea(
+        bottom: false,
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.gutter,
+            AppSpacing.sm,
+            AppSpacing.gutter,
+            96,
           ),
-          const SizedBox(height: AppSpacing.sm),
-          _MonthGrid(
-            month: _month,
-            byDay: byDay,
-            selectedDay: _selectedDay,
-            onDayTap: (day) => setState(() => _selectedDay = day),
-          ),
-          const SizedBox(height: AppSpacing.lg),
-          if (_selectedDay != null) ...[
+          children: [
             Text(
-              DateFormat.yMMMMEEEEd().format(_selectedDay!),
-              style: theme.textTheme.labelSmall,
+              'Calendar',
+              style: AppTextStyles.h2.copyWith(color: c.textPrimary),
             ),
-            const SizedBox(height: AppSpacing.sm),
-            if (selectedEntries.isEmpty)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
-                child: Text(
-                  'No entries this day.',
-                  style: theme.textTheme.bodySmall,
-                ),
-              )
-            else
-              for (final entry in selectedEntries)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-                  child: EntryCard(
-                    entry: entry,
-                    onTap: () => context.push(AppRoutes.viewEntry(entry.id)),
-                    onTagTap: (tag) => context.push(AppRoutes.tagTimeline(tag)),
+            const SizedBox(height: AppSpacing.md),
+            VaultCard(
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.sm,
+                AppSpacing.sm,
+                AppSpacing.sm,
+                AppSpacing.md,
+              ),
+              child: Column(
+                children: [
+                  Row(
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.chevron_left),
+                        tooltip: 'Previous month',
+                        onPressed: () => _shiftMonth(-1),
+                      ),
+                      Expanded(
+                        child: Center(
+                          child: Text(
+                            _monthFormat.format(_month),
+                            style:
+                                AppTextStyles.h4.copyWith(color: c.textPrimary),
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.chevron_right),
+                        tooltip: 'Next month',
+                        onPressed: () => _shiftMonth(1),
+                      ),
+                    ],
                   ),
-                ),
+                  const SizedBox(height: AppSpacing.sm),
+                  _MonthGrid(
+                    month: _month,
+                    byDay: byDay,
+                    selectedDay: _selectedDay,
+                    onDayTap: (day) => setState(() => _selectedDay = day),
+                  ),
+                ],
+              ),
+            ),
+            if (_selectedDay != null) ...[
+              const SizedBox(height: AppSpacing.lg),
+              Text(
+                DateFormat.yMMMMEEEEd().format(_selectedDay!),
+                style: AppTextStyles.label.copyWith(color: c.textSecondary),
+              ),
+              const SizedBox(height: AppSpacing.smd),
+              if (selectedEntries.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
+                  child: Text(
+                    'No entries this day.',
+                    style:
+                        AppTextStyles.bodySmall.copyWith(color: c.textTertiary),
+                  ),
+                )
+              else
+                for (final entry in selectedEntries)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: AppSpacing.smd),
+                    child: EntryCard(
+                      entry: entry,
+                      onTap: () => context.push(AppRoutes.viewEntry(entry.id)),
+                      onTagTap: (tag) =>
+                          context.push(AppRoutes.tagTimeline(tag)),
+                    ),
+                  ),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }
@@ -133,7 +158,7 @@ class _MonthGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final c = SuiteColors.of(context);
     final firstDay = DateTime(month.year, month.month);
     final daysInMonth = DateTime(month.year, month.month + 1, 0).day;
     final leadingBlanks = firstDay.weekday - DateTime.monday;
@@ -146,7 +171,11 @@ class _MonthGrid extends StatelessWidget {
             for (final label in weekdayLabels)
               Expanded(
                 child: Center(
-                  child: Text(label, style: theme.textTheme.labelSmall),
+                  child: Text(
+                    label,
+                    style:
+                        AppTextStyles.caption.copyWith(color: c.textTertiary),
+                  ),
                 ),
               ),
           ],
@@ -187,23 +216,21 @@ class _MonthGrid extends StatelessWidget {
                     decoration: isSelected
                         ? BoxDecoration(
                             shape: BoxShape.circle,
-                            color: theme.colorScheme.primary,
+                            color: c.accent,
                           )
                         : isToday
                             ? BoxDecoration(
                                 shape: BoxShape.circle,
                                 border: Border.all(
-                                  color: theme.colorScheme.primary,
+                                  color: c.accent,
                                   width: 1.5,
                                 ),
                               )
                             : null,
                     child: Text(
                       '${day.day}',
-                      style: theme.textTheme.bodyMedium!.copyWith(
-                        color: isSelected
-                            ? theme.colorScheme.onPrimary
-                            : theme.colorScheme.onSurface,
+                      style: AppTextStyles.bodyMedium.copyWith(
+                        color: isSelected ? c.onAccent : c.textPrimary,
                         fontWeight: isToday ? FontWeight.w700 : null,
                       ),
                     ),

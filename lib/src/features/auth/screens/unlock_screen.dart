@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:core_theme/core_theme.dart';
+import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:reflect/src/core/di.dart';
@@ -123,7 +124,7 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final c = SuiteColors.of(context);
     final coolingDown = _cooldown > Duration.zero;
     final offerBiometrics =
         ref.watch(biometricUnlockOfferedProvider).valueOrNull ?? false;
@@ -136,110 +137,111 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
       });
     }
 
+    final status = coolingDown
+        ? 'Too many attempts. Try again in ${_cooldown.inSeconds}s'
+        : _error;
+
     return Scaffold(
       body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(AppSpacing.lg),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 72,
-                  height: 72,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: theme.colorScheme.primaryContainer,
+        child: Column(
+          children: [
+            Expanded(
+              child: Center(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.gutter,
+                    vertical: AppSpacing.lg,
                   ),
-                  child: Icon(
-                    Icons.self_improvement_rounded,
-                    size: 40,
-                    color: theme.colorScheme.primary,
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.md),
-                const Text('Reflect', style: AppTextStyles.h1),
-                const SizedBox(height: AppSpacing.xs),
-                Text(
-                  'Enter your password to unlock your journal',
-                  style: theme.textTheme.bodySmall,
-                ),
-                const SizedBox(height: AppSpacing.xl),
-                TextField(
-                  controller: _password,
-                  obscureText: true,
-                  enabled: !_busy && !coolingDown,
-                  autofocus: true,
-                  textInputAction: TextInputAction.go,
-                  onSubmitted: (_) => _submit(),
-                  decoration: InputDecoration(
-                    labelText: 'Password',
-                    border: const OutlineInputBorder(),
-                    suffixIcon: offerBiometrics
-                        ? IconButton(
-                            tooltip: 'Unlock with fingerprint',
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 420),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const SuiteAppIcon(app: SuiteApp.reflect, size: 64),
+                        const SizedBox(height: AppSpacing.md),
+                        Text(
+                          'Reflect',
+                          style:
+                              AppTextStyles.h1.copyWith(color: c.textPrimary),
+                        ),
+                        const SizedBox(height: AppSpacing.xs),
+                        Text(
+                          'Enter your password to unlock your journal',
+                          textAlign: TextAlign.center,
+                          style: AppTextStyles.body
+                              .copyWith(color: c.textSecondary),
+                        ),
+                        const SizedBox(height: AppSpacing.xl),
+                        AppTextField(
+                          controller: _password,
+                          label: 'Password',
+                          obscureText: true,
+                          enabled: !_busy && !coolingDown,
+                          autofocus: true,
+                          textInputAction: TextInputAction.go,
+                          onSubmitted: (_) => _submit(),
+                        ),
+                        const SizedBox(height: AppSpacing.md),
+                        VaultButton(
+                          label: 'Unlock',
+                          onPressed: _busy || coolingDown ? null : _submit,
+                        ),
+                        if (offerBiometrics) ...[
+                          const SizedBox(height: AppSpacing.sm),
+                          VaultButton(
+                            label: 'Use fingerprint',
+                            icon: Icons.fingerprint_rounded,
+                            variant: VaultButtonVariant.secondary,
                             onPressed: _busy || coolingDown
                                 ? null
                                 : () => _unlockWithBiometrics(),
-                            icon: const Icon(Icons.fingerprint_rounded),
-                          )
-                        : null,
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.md),
-                SizedBox(
-                  width: double.infinity,
-                  child: FilledButton(
-                    onPressed: _busy || coolingDown ? null : _submit,
-                    child: const Text('Unlock'),
-                  ),
-                ),
-                if (offerBiometrics) ...[
-                  const SizedBox(height: AppSpacing.sm),
-                  TextButton.icon(
-                    onPressed: _busy || coolingDown
-                        ? null
-                        : () => _unlockWithBiometrics(),
-                    icon: const Icon(Icons.fingerprint_rounded),
-                    label: const Text('Use fingerprint'),
-                  ),
-                  if (_biometricUnavailable)
-                    Text(
-                      'Biometric hardware is unavailable — use your password',
-                      textAlign: TextAlign.center,
-                      style: theme.textTheme.bodySmall!
-                          .copyWith(color: theme.colorScheme.onSurfaceVariant),
-                    ),
-                ],
-                const SizedBox(height: AppSpacing.md),
-                SizedBox(
-                  height: 24,
-                  child: coolingDown
-                      ? Text(
-                          'Too many attempts. Try again in '
-                          '${_cooldown.inSeconds}s',
-                          style: theme.textTheme.bodySmall!
-                              .copyWith(color: theme.colorScheme.error),
-                        )
-                      : _error != null
-                          ? Text(
-                              _error!,
-                              style: theme.textTheme.bodySmall!
-                                  .copyWith(color: theme.colorScheme.error),
-                            )
-                          : _busy
-                              ? const SizedBox(
-                                  width: 18,
-                                  height: 18,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                  ),
+                          ),
+                          if (_biometricUnavailable)
+                            Padding(
+                              padding:
+                                  const EdgeInsets.only(top: AppSpacing.sm),
+                              child: Text(
+                                'Biometric hardware is unavailable. '
+                                'Use your password.',
+                                textAlign: TextAlign.center,
+                                style: AppTextStyles.bodySmall
+                                    .copyWith(color: c.textSecondary),
+                              ),
+                            ),
+                        ],
+                        const SizedBox(height: AppSpacing.md),
+                        SizedBox(
+                          height: 24,
+                          child: status != null
+                              ? Text(
+                                  status,
+                                  textAlign: TextAlign.center,
+                                  style: AppTextStyles.bodySmall
+                                      .copyWith(color: c.negative),
                                 )
-                              : null,
+                              : _busy
+                                  ? const Center(
+                                      child: SizedBox(
+                                        width: 18,
+                                        height: 18,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                        ),
+                                      ),
+                                    )
+                                  : null,
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
-              ],
+              ),
             ),
-          ),
+            const Padding(
+              padding: EdgeInsets.only(bottom: AppSpacing.md),
+              child: SuiteEndorsement(),
+            ),
+          ],
         ),
       ),
     );
