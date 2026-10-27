@@ -1,3 +1,4 @@
+import 'package:core_theme/core_theme.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:reflect/src/app.dart';
@@ -5,6 +6,7 @@ import 'package:reflect/src/core/di.dart';
 import 'package:reflect/src/core/storage_keys.dart';
 import 'package:reflect/src/features/auth/providers/auth_providers.dart';
 import 'package:reflect/src/features/auth/screens/unlock_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../fakes/fakes.dart';
 
@@ -12,6 +14,7 @@ void main() {
   late FakeSecureStorage storage;
   late InMemoryFileStore fileStore;
   late ProviderContainer container;
+  late AppearanceController appearance;
 
   List<Override> overrides() => [
         secureStorageProvider.overrideWithValue(storage),
@@ -21,6 +24,7 @@ void main() {
         clockProvider.overrideWithValue(FixedClock(DateTime(2026, 7, 7))),
         biometricAuthProvider
             .overrideWithValue(FakeBiometricAuth(available: false)),
+        appearanceProvider.overrideWithValue(appearance),
       ];
 
   Future<void> pumpApp(WidgetTester tester) async {
@@ -36,9 +40,11 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  setUp(() {
+  setUp(() async {
     storage = FakeSecureStorage();
     fileStore = InMemoryFileStore();
+    SharedPreferences.setMockInitialValues({});
+    appearance = await AppearanceController.load();
   });
 
   testWidgets('first run walks through onboarding into PIN setup',

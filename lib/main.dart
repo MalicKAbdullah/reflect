@@ -1,3 +1,4 @@
+import 'package:core_theme/core_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:reflect/src/app.dart';
@@ -10,11 +11,13 @@ Future<void> main() async {
   // Platform-backed reminder scheduling; tests keep the no-op default.
   final reminderScheduler = LocalNotificationReminderScheduler();
   await reminderScheduler.initialize();
+  final appearance = await AppearanceController.load();
 
   runApp(
     ProviderScope(
       overrides: [
         reminderSchedulerProvider.overrideWithValue(reminderScheduler),
+        appearanceProvider.overrideWithValue(appearance),
       ],
       child: const ReflectApp(),
     ),

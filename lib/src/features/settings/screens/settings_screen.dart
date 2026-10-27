@@ -60,6 +60,12 @@ class SettingsScreen extends ConsumerWidget {
             ),
             const SizedBox(height: AppSpacing.sm),
             const SizedBox(height: AppSpacing.md),
+            RowGroup(
+              children: [
+                AppearanceSetting(controller: ref.watch(appearanceProvider)),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.md),
             const SectionHeader(title: 'Security'),
             RowGroup(
               children: [

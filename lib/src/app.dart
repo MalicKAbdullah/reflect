@@ -1,6 +1,7 @@
 import 'package:core_theme/core_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:reflect/src/core/di.dart';
 import 'package:reflect/src/core/router/app_router.dart';
 import 'package:reflect/src/core/security/inactivity_locker.dart';
 import 'package:reflect/src/features/reminders/providers/reminder_providers.dart';
@@ -14,15 +15,19 @@ class ReflectApp extends ConsumerWidget {
     // rescheduled on every app start.
     ref.watch(dailyReminderProvider);
     final router = ref.watch(appRouterProvider);
-    return MaterialApp.router(
-      title: 'Reflect',
-      theme: AppTheme.build(Brightness.light, accent: AppAccents.reflect),
-      darkTheme: AppTheme.build(Brightness.dark, accent: AppAccents.reflect),
-      themeMode: ThemeMode.system,
-      routerConfig: router,
-      debugShowCheckedModeBanner: false,
-      builder: (context, child) =>
-          InactivityLocker(child: child ?? const SizedBox.shrink()),
+    final appearance = ref.watch(appearanceProvider);
+    return ListenableBuilder(
+      listenable: appearance,
+      builder: (context, _) => MaterialApp.router(
+        title: 'Reflect',
+        theme: AppTheme.build(Brightness.light, accent: AppAccents.reflect),
+        darkTheme: AppTheme.build(Brightness.dark, accent: AppAccents.reflect),
+        themeMode: appearance.mode,
+        routerConfig: router,
+        debugShowCheckedModeBanner: false,
+        builder: (context, child) =>
+            InactivityLocker(child: child ?? const SizedBox.shrink()),
+      ),
     );
   }
 }
