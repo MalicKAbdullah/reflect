@@ -58,7 +58,6 @@ class SettingsScreen extends ConsumerWidget {
               'Settings',
               style: AppTextStyles.h2.copyWith(color: c.textPrimary),
             ),
-            const SizedBox(height: AppSpacing.sm),
             const SizedBox(height: AppSpacing.md),
             RowGroup(
               children: [

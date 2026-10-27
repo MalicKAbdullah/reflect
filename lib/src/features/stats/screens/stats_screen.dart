@@ -88,37 +88,42 @@ class StatsScreen extends ConsumerWidget {
             ),
             if (goalProgress != null) ...[
               const SizedBox(height: AppSpacing.smd),
-              Row(
-                children: [
-                  Expanded(
-                    child: MetricCard(
-                      label: 'Goal met',
-                      icon: Icons.flag_outlined,
-                      value: Text(
-                        '${goalProgress.daysMet}',
-                        style: AppTextStyles.numberLarge
-                            .copyWith(color: c.textPrimary),
-                      ),
-                      caption: 'of ${goalProgress.windowDays} days',
-                      visual: AppProgressBar(
-                        value: goalProgress.daysMet / goalProgress.windowDays,
+              IntrinsicHeight(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Expanded(
+                      child: MetricCard(
+                        label: 'Goal met',
+                        icon: Icons.flag_outlined,
+                        value: Text(
+                          '${goalProgress.daysMet}',
+                          style: AppTextStyles.numberLarge.copyWith(
+                            color: c.textPrimary,
+                          ),
+                        ),
+                        caption: 'of ${goalProgress.windowDays} days',
+                        visual: AppProgressBar(
+                          value: goalProgress.daysMet / goalProgress.windowDays,
+                        ),
                       ),
                     ),
-                  ),
-                  const SizedBox(width: AppSpacing.smd),
-                  Expanded(
-                    child: MetricCard(
-                      label: 'Goal streak',
-                      icon: Icons.local_fire_department_outlined,
-                      value: Text(
-                        '${goalProgress.streak}',
-                        style: AppTextStyles.numberLarge
-                            .copyWith(color: c.textPrimary),
+                    const SizedBox(width: AppSpacing.smd),
+                    Expanded(
+                      child: MetricCard(
+                        label: 'Goal streak',
+                        icon: Icons.local_fire_department_outlined,
+                        value: Text(
+                          '${goalProgress.streak}',
+                          style: AppTextStyles.numberLarge.copyWith(
+                            color: c.textPrimary,
+                          ),
+                        ),
+                        caption: _dayUnit(goalProgress.streak),
                       ),
-                      caption: _dayUnit(goalProgress.streak),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ],
             const SizedBox(height: AppSpacing.md),
@@ -132,8 +137,9 @@ class StatsScreen extends ConsumerWidget {
             const SectionHeader(title: 'Mood distribution'),
             VaultCard(
               child: RepaintBoundary(
-                child:
-                    MoodDistributionBars(distribution: stats.moodDistribution),
+                child: MoodDistributionBars(
+                  distribution: stats.moodDistribution,
+                ),
               ),
             ),
             const SizedBox(height: AppSpacing.md),
