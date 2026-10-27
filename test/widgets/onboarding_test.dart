@@ -4,6 +4,7 @@ import 'package:reflect/src/app.dart';
 import 'package:reflect/src/core/di.dart';
 import 'package:reflect/src/core/storage_keys.dart';
 import 'package:reflect/src/features/auth/providers/auth_providers.dart';
+import 'package:reflect/src/features/auth/screens/unlock_screen.dart';
 
 import '../fakes/fakes.dart';
 
@@ -86,9 +87,6 @@ void main() {
 
     expect(find.text('Your private space to reflect'), findsNothing);
     expect(find.text('Welcome to Reflect'), findsNothing);
-    expect(
-      find.text('Enter your password to unlock your journal'),
-      findsOneWidget,
-    );
+    expect(find.byType(UnlockScreen), findsOneWidget);
   });
 }

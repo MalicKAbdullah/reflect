@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:core_lock/core_lock.dart';
 import 'package:core_theme/core_theme.dart';
 import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
@@ -18,6 +19,9 @@ final biometricUnlockOfferedProvider = FutureProvider<bool>(
   (ref) => ref.watch(biometricUnlockServiceProvider).isEnabled(),
 );
 
+/// The password lock, laid out by core's [LockLayout]: the Reflect tile and
+/// name, the password field, Unlock and "Forgot password?", with the
+/// fingerprint button low on the screen when biometric unlock is on.
 class UnlockScreen extends ConsumerStatefulWidget {
   const UnlockScreen({super.key});
 
@@ -27,16 +31,24 @@ class UnlockScreen extends ConsumerStatefulWidget {
 
 class _UnlockScreenState extends ConsumerState<UnlockScreen> {
   final TextEditingController _password = TextEditingController();
+  final FocusNode _focus = FocusNode();
   String? _error;
+  int _failures = 0;
+
+  /// A password check (Argon2) is running.
   bool _busy = false;
 
-  /// Set once the biometric prompt has been auto-triggered for this locked
-  /// screen. Entering the locked state builds a fresh screen, so the prompt
-  /// fires exactly once per lock; this latch stops it re-firing on rebuild.
+  /// The system fingerprint prompt is up.
+  bool _prompting = false;
+
+  /// Set once the biometric prompt has been auto-triggered (or the field
+  /// focused, without biometrics) for this locked screen. Entering the
+  /// locked state builds a fresh screen, so this happens exactly once per
+  /// lock; the latch stops it re-firing on rebuild.
   bool _autoPrompted = false;
 
-  /// True when the device reports no usable biometric hardware — we then
-  /// show a small inline note and quietly fall back to the PIN.
+  /// True when the device reports no usable biometric hardware — the
+  /// fingerprint button is then left out and the password takes over.
   bool _biometricUnavailable = false;
 
   Duration _cooldown = Duration.zero;
@@ -46,12 +58,17 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
   void dispose() {
     _ticker?.cancel();
     _password.dispose();
+    _focus.dispose();
     super.dispose();
   }
 
   Future<void> _submit() async {
     final value = _password.text;
-    if (value.isEmpty || _busy) return;
+    if (_busy || _cooldown > Duration.zero) return;
+    if (value.isEmpty) {
+      _focus.requestFocus();
+      return;
+    }
     setState(() {
       _busy = true;
       _error = null;
@@ -67,10 +84,15 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
         _password.clear();
         setState(() {
           _busy = false;
+          _failures++;
           _error = 'Wrong password ($failedAttempts '
-              'failed attempt${failedAttempts == 1 ? '' : 's'})';
+              'failed attempt${failedAttempts == 1 ? '' : 's'}).';
         });
-        if (cooldown != null) _startCooldown(cooldown);
+        if (cooldown != null) {
+          _startCooldown(cooldown);
+        } else {
+          _focus.requestFocus();
+        }
       case UnlockCoolingDown(:final remaining):
         setState(() => _busy = false);
         _startCooldown(remaining);
@@ -78,36 +100,29 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
   }
 
   /// Fired once, via a post-frame callback, when a locked screen with
-  /// biometrics enabled first appears. Skips (and shows a note) when the
-  /// hardware probe reports nothing usable, so the PIN takes over.
+  /// biometrics enabled first appears. When the hardware probe reports
+  /// nothing usable, the fingerprint button goes and the password field
+  /// takes focus instead.
   Future<void> _autoUnlock() async {
     final supported =
         await ref.read(biometricUnlockServiceProvider).isSupported();
     if (!mounted) return;
     if (!supported) {
       setState(() => _biometricUnavailable = true);
+      _focus.requestFocus();
       return;
     }
-    await _unlockWithBiometrics(auto: true);
+    await _unlockWithBiometrics();
   }
 
-  Future<void> _unlockWithBiometrics({bool auto = false}) async {
-    if (_busy) return;
-    setState(() {
-      _busy = true;
-      _error = null;
-    });
-    final ok = await ref.read(sessionProvider.notifier).unlockWithBiometrics();
-    if (!mounted) return;
-    setState(() {
-      _busy = false;
-      // On an auto attempt the user may simply have dismissed the prompt —
-      // stay quiet and let them retry or use the PIN. A manual tap that
-      // fails gets a gentle nudge toward the PIN.
-      if (!ok && !auto) {
-        _error = "Biometric unlock didn't work — use your password";
-      }
-    });
+  /// The system prompt shows its own mismatch and cancel feedback, so a
+  /// failed or dismissed prompt adds nothing here; the password stays ready.
+  Future<void> _unlockWithBiometrics() async {
+    if (_prompting || _busy || _cooldown > Duration.zero) return;
+    _prompting = true;
+    setState(() => _error = null);
+    await ref.read(sessionProvider.notifier).unlockWithBiometrics();
+    _prompting = false;
   }
 
   void _startCooldown(Duration remaining) {
@@ -126,136 +141,69 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final c = SuiteColors.of(context);
     final coolingDown = _cooldown > Duration.zero;
-    final offerBiometrics =
-        ref.watch(biometricUnlockOfferedProvider).valueOrNull ?? false;
+    // A failed read of the toggle counts as "off": the password still works.
+    final offered = switch (ref.watch(biometricUnlockOfferedProvider)) {
+      AsyncData(:final value) => value,
+      AsyncError() => false,
+      _ => null,
+    };
+    final biometric = (offered ?? false) && !_biometricUnavailable;
 
-    // Auto-trigger the prompt exactly once on entering the locked state.
-    if (offerBiometrics && !_autoPrompted) {
+    // Exactly once on entering the locked state: start the fingerprint
+    // prompt, or focus the field when there is no fingerprint unlock.
+    if (offered != null && !_autoPrompted) {
       _autoPrompted = true;
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _autoUnlock();
+        if (!mounted) return;
+        if (offered) {
+          _autoUnlock();
+        } else {
+          _focus.requestFocus();
+        }
       });
     }
 
-    final status = coolingDown
-        ? 'Too many attempts. Try again in ${_cooldown.inSeconds}s'
+    final error = coolingDown
+        ? 'Too many attempts. Try again in ${formatLockCountdown(_cooldown)}.'
         : _error;
 
-    return Scaffold(
-      body: SafeArea(
-        child: Column(
-          children: [
-            Expanded(
-              child: Center(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.gutter,
-                    vertical: AppSpacing.lg,
-                  ),
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 420),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const SuiteAppIcon(app: SuiteApp.reflect, size: 64),
-                        const SizedBox(height: AppSpacing.md),
-                        Text(
-                          'Reflect',
-                          style:
-                              AppTextStyles.h1.copyWith(color: c.textPrimary),
-                        ),
-                        const SizedBox(height: AppSpacing.xs),
-                        Text(
-                          'Enter your password to unlock your journal',
-                          textAlign: TextAlign.center,
-                          style: AppTextStyles.body
-                              .copyWith(color: c.textSecondary),
-                        ),
-                        const SizedBox(height: AppSpacing.xl),
-                        AppTextField(
-                          controller: _password,
-                          label: 'Password',
-                          obscureText: true,
-                          enabled: !_busy && !coolingDown,
-                          autofocus: true,
-                          textInputAction: TextInputAction.go,
-                          onSubmitted: (_) => _submit(),
-                        ),
-                        const SizedBox(height: AppSpacing.md),
-                        VaultButton(
-                          label: 'Unlock',
-                          onPressed: _busy || coolingDown ? null : _submit,
-                        ),
-                        TextButton(
-                          onPressed: _busy
-                              ? null
-                              : () => context.go(AppRoutes.recover),
-                          child: Text(
-                            'Forgot password?',
-                            style: AppTextStyles.label
-                                .copyWith(color: c.textSecondary),
-                          ),
-                        ),
-                        if (offerBiometrics) ...[
-                          const SizedBox(height: AppSpacing.sm),
-                          VaultButton(
-                            label: 'Use fingerprint',
-                            icon: Icons.fingerprint_rounded,
-                            variant: VaultButtonVariant.secondary,
-                            onPressed: _busy || coolingDown
-                                ? null
-                                : () => _unlockWithBiometrics(),
-                          ),
-                          if (_biometricUnavailable)
-                            Padding(
-                              padding:
-                                  const EdgeInsets.only(top: AppSpacing.sm),
-                              child: Text(
-                                'Biometric hardware is unavailable. '
-                                'Use your password.',
-                                textAlign: TextAlign.center,
-                                style: AppTextStyles.bodySmall
-                                    .copyWith(color: c.textSecondary),
-                              ),
-                            ),
-                        ],
-                        const SizedBox(height: AppSpacing.md),
-                        SizedBox(
-                          height: 24,
-                          child: status != null
-                              ? Text(
-                                  status,
-                                  textAlign: TextAlign.center,
-                                  style: AppTextStyles.bodySmall
-                                      .copyWith(color: c.negative),
-                                )
-                              : _busy
-                                  ? const Center(
-                                      child: SizedBox(
-                                        width: 18,
-                                        height: 18,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2,
-                                        ),
-                                      ),
-                                    )
-                                  : null,
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            const Padding(
-              padding: EdgeInsets.only(bottom: AppSpacing.md),
-              child: SuiteEndorsement(),
-            ),
-          ],
+    return LockLayout(
+      mark: const SuiteAppIcon(app: SuiteApp.reflect, size: 64),
+      title: 'Reflect',
+      bottom: biometric
+          ? LockBiometricButton(onPressed: _unlockWithBiometrics)
+          : null,
+      children: [
+        LockShake(
+          trigger: _failures,
+          child: AppTextField(
+            controller: _password,
+            focusNode: _focus,
+            label: 'Password',
+            obscureText: true,
+            autofillHints: const [AutofillHints.password],
+            textInputAction: TextInputAction.go,
+            errorText: error,
+            onSubmitted: (_) => _submit(),
+          ),
         ),
-      ),
+        const SizedBox(height: LockLayout.gap),
+        VaultButton(
+          label: 'Unlock',
+          isLoading: _busy,
+          onPressed: coolingDown ? null : _submit,
+        ),
+        // Hidden while typing so it is never cut in half by the keyboard
+        // edge on small phones; it returns when the keyboard closes.
+        if (MediaQuery.viewInsetsOf(context).bottom == 0) ...[
+          const SizedBox(height: AppSpacing.sm),
+          LockTextLink(
+            label: 'Forgot password?',
+            onPressed: _busy ? null : () => context.go(AppRoutes.recover),
+          ),
+        ],
+      ],
     );
   }
 }

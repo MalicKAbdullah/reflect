@@ -64,8 +64,7 @@ void main() {
       (tester) async {
     biometric.authenticates = false; // keep the auto-prompt from unlocking
     await pumpUnlock(tester);
-    // Fingerprint appears in the field suffix and as the button below it.
-    expect(find.byIcon(Icons.fingerprint_rounded), findsWidgets);
+    expect(find.byTooltip('Unlock with fingerprint'), findsOneWidget);
     expect(container.read(sessionProvider), AuthStatus.locked);
   });
 
@@ -85,7 +84,7 @@ void main() {
     expect(container.read(sessionProvider), AuthStatus.locked);
 
     biometric.authenticates = true;
-    await tester.tap(find.byIcon(Icons.fingerprint_rounded).first);
+    await tester.tap(find.byTooltip('Unlock with fingerprint'));
     await tester.pumpAndSettle();
     expect(biometric.promptCount, 2);
     expect(container.read(sessionProvider), AuthStatus.unlocked);
@@ -96,19 +95,21 @@ void main() {
     biometric.authenticates = false;
     await pumpUnlock(tester);
     expect(container.read(sessionProvider), AuthStatus.locked);
+    // A dismissed or failed system prompt adds no in-app error.
+    await tester.tap(find.byTooltip('Unlock with fingerprint'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Wrong password'), findsNothing);
+    expect(find.textContaining("didn't work"), findsNothing);
     await enterPassword(tester, '123456');
     expect(container.read(sessionProvider), AuthStatus.unlocked);
   });
 
-  testWidgets('hardware unavailable shows a note and does not prompt',
+  testWidgets('hardware unavailable hides the button and does not prompt',
       (tester) async {
     biometric.available = false;
     await pumpUnlock(tester);
     expect(biometric.promptCount, 0);
-    expect(find.textContaining('Biometric hardware is unavailable'),
-        findsOneWidget);
-    // Button is still offered (toggle is on), and the password still works.
-    expect(find.byIcon(Icons.fingerprint_rounded), findsWidgets);
+    expect(find.byTooltip('Unlock with fingerprint'), findsNothing);
     await enterPassword(tester, '123456');
     expect(container.read(sessionProvider), AuthStatus.unlocked);
   });
