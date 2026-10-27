@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:core_crypto/core_crypto.dart';
-import 'package:core_lock/core_lock.dart' show RecoveryKeyView;
+import 'package:core_lock/core_lock.dart';
 import 'package:core_theme/core_theme.dart';
 import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
@@ -29,6 +29,7 @@ class _RecoverScreenState extends ConsumerState<RecoverScreen> {
   late final Future<bool> _hasKey =
       ref.read(pinAuthServiceProvider).hasRecoveryKey();
   String? _error;
+  int _failures = 0;
   bool _busy = false;
 
   @override
@@ -54,7 +55,10 @@ class _RecoverScreenState extends ConsumerState<RecoverScreen> {
       problem = null;
     }
     if (problem != null) {
-      setState(() => _error = problem);
+      setState(() {
+        _error = problem;
+        _failures++;
+      });
       return;
     }
     setState(() {
@@ -69,14 +73,15 @@ class _RecoverScreenState extends ConsumerState<RecoverScreen> {
     if (!mounted) return;
     setState(() {
       _busy = false;
+      if (result is! UnlockSuccess) _failures++;
       _error = switch (result) {
         UnlockSuccess() => null,
         UnlockWrongPin(:final cooldown) => cooldown == null
-            ? 'That recovery key is not right'
+            ? 'That recovery key is not right.'
             : 'That recovery key is not right. Try again in '
-                '${cooldown.inSeconds}s',
+                '${formatLockCountdown(cooldown)}.',
         UnlockCoolingDown(:final remaining) =>
-          'Too many attempts. Try again in ${remaining.inSeconds}s',
+          'Too many attempts. Try again in ${formatLockCountdown(remaining)}.',
       };
     });
   }
@@ -84,63 +89,79 @@ class _RecoverScreenState extends ConsumerState<RecoverScreen> {
   @override
   Widget build(BuildContext context) {
     final c = SuiteColors.of(context);
-    return Scaffold(
-      appBar: AppBar(
-        leading: BackButton(onPressed: () => context.go(AppRoutes.unlock)),
-        title: const Text('Reset your password'),
-      ),
-      body: FutureBuilder<bool>(
-        future: _hasKey,
-        builder: (context, snapshot) {
-          final hasKey = snapshot.data;
-          if (hasKey == null) return const SizedBox.shrink();
-          return ListView(
-            padding: const EdgeInsets.all(AppSpacing.gutter),
-            children: [
-              Text(
-                hasKey
-                    ? 'Enter the recovery key you saved, then choose a new '
-                        'password. Your journal and photos stay as they are.'
-                    : 'No recovery key was set up, so a forgotten password '
-                        'cannot be reset. Unlock with your fingerprint, then '
-                        'create a recovery key in Settings.',
-                style: AppTextStyles.body.copyWith(color: c.textSecondary),
-              ),
-              if (hasKey) ...[
-                const SizedBox(height: AppSpacing.lg),
-                AppTextField(
-                  controller: _key,
-                  label: 'Recovery key',
-                  hint: 'XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX',
-                  monospace: true,
-                  autofocus: true,
+    return LockLayout(
+      mark: const SuiteAppIcon(app: SuiteApp.reflect, size: 64),
+      title: 'Reflect',
+      message: 'Reset your password',
+      children: [
+        FutureBuilder<bool>(
+          future: _hasKey,
+          builder: (context, snapshot) {
+            final hasKey = snapshot.data;
+            if (hasKey == null) return const SizedBox.shrink();
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  hasKey
+                      ? 'Enter the recovery key you saved, then choose a new '
+                          'password. Your journal and photos stay as they are.'
+                      : 'No recovery key was set up, so a forgotten password '
+                          'cannot be reset. Unlock with your fingerprint, then '
+                          'create a recovery key in Settings.',
+                  textAlign: TextAlign.center,
+                  style:
+                      AppTextStyles.bodySmall.copyWith(color: c.textSecondary),
                 ),
-                const SizedBox(height: AppSpacing.smd),
-                AppTextField(
-                  controller: _password,
-                  label: 'New password (6+ characters)',
-                  obscureText: true,
-                ),
-                const SizedBox(height: AppSpacing.smd),
-                AppTextField(
-                  controller: _confirm,
-                  label: 'Confirm new password',
-                  obscureText: true,
-                  errorText: _error,
-                  textInputAction: TextInputAction.go,
-                  onSubmitted: (_) => _submit(),
-                ),
-                const SizedBox(height: AppSpacing.lg),
-                VaultButton(
-                  label: 'Reset password and unlock',
-                  isLoading: _busy,
-                  onPressed: _busy ? null : _submit,
+                if (hasKey) ...[
+                  const SizedBox(height: AppSpacing.lg),
+                  AppTextField(
+                    controller: _key,
+                    label: 'Recovery key',
+                    hint: 'XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX',
+                    monospace: true,
+                    autofocus: true,
+                    autocorrect: false,
+                    enableSuggestions: false,
+                    textCapitalization: TextCapitalization.characters,
+                    textInputAction: TextInputAction.next,
+                  ),
+                  const SizedBox(height: LockLayout.gap),
+                  AppTextField(
+                    controller: _password,
+                    label: 'New password (6+ characters)',
+                    obscureText: true,
+                    textInputAction: TextInputAction.next,
+                  ),
+                  const SizedBox(height: LockLayout.gap),
+                  LockShake(
+                    trigger: _failures,
+                    child: AppTextField(
+                      controller: _confirm,
+                      label: 'Confirm new password',
+                      obscureText: true,
+                      errorText: _error,
+                      textInputAction: TextInputAction.go,
+                      onSubmitted: (_) => _submit(),
+                    ),
+                  ),
+                  const SizedBox(height: LockLayout.gap),
+                  VaultButton(
+                    label: 'Reset and unlock',
+                    isLoading: _busy,
+                    onPressed: _submit,
+                  ),
+                ],
+                const SizedBox(height: AppSpacing.sm),
+                LockTextLink(
+                  label: 'Back to unlock',
+                  onPressed: _busy ? null : () => context.go(AppRoutes.unlock),
                 ),
               ],
-            ],
-          );
-        },
-      ),
+            );
+          },
+        ),
+      ],
     );
   }
 }

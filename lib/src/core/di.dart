@@ -5,6 +5,7 @@ import 'dart:typed_data';
 import 'package:core_backup/core_backup.dart';
 import 'package:core_crypto/core_crypto.dart';
 import 'package:core_storage/core_storage.dart';
+import 'package:core_theme/core_theme.dart';
 import 'package:core_update/core_update.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -138,6 +139,14 @@ final attachmentServiceProvider = Provider<AttachmentService>(
 /// implementation.
 final reminderSchedulerProvider = Provider<IReminderScheduler>(
   (_) => const NoopReminderScheduler(),
+);
+
+/// The System / Light / Dark choice. It is loaded before `runApp` so the
+/// first frame (the lock screen included) has the right theme, so there is
+/// no default: main() and every test that builds the app or Settings
+/// override it with a loaded controller.
+final appearanceProvider = Provider<AppearanceController>(
+  (_) => throw UnimplementedError('appearanceProvider is set in main()'),
 );
 
 // -- In-app update (core_update) ------------------------------------------

@@ -1,3 +1,4 @@
+import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -58,13 +59,14 @@ void main() {
     seedContainer.dispose();
   });
 
-  testWidgets('renders password field and prompt', (tester) async {
+  testWidgets('shows only the app, the field, Unlock and the link',
+      (tester) async {
     await pumpUnlock(tester);
-    expect(
-      find.text('Enter your password to unlock your journal'),
-      findsOneWidget,
-    );
+    expect(find.text('Reflect'), findsOneWidget);
     expect(find.byType(TextField), findsOneWidget);
+    expect(find.text('Unlock'), findsOneWidget);
+    expect(find.text('Forgot password?'), findsOneWidget);
+    expect(find.byTooltip('Unlock with fingerprint'), findsNothing);
     expect(container.read(sessionProvider), AuthStatus.locked);
   });
 
@@ -88,6 +90,10 @@ void main() {
       await enterPassword(tester, '111111');
     }
     expect(find.textContaining('Too many attempts'), findsOneWidget);
+    final unlock = tester.widget<VaultButton>(
+      find.widgetWithText(VaultButton, 'Unlock'),
+    );
+    expect(unlock.onPressed, isNull);
     // Correct password is rejected during cooldown.
     await enterPassword(tester, '123456');
     expect(container.read(sessionProvider), AuthStatus.locked);
