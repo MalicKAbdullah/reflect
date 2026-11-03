@@ -132,15 +132,6 @@ packages:
       url: "https://github.com/MalicKAbdullah/secure-suite-core.git"
     source: git
     version: "0.3.0"
-  core_security:
-    dependency: "direct main"
-    description:
-      path: core_security
-      ref: "3e90d1221ef1e4010748944c83459df13d18c205"
-      resolved-ref: "3e90d1221ef1e4010748944c83459df13d18c205"
-      url: "https://github.com/MalicKAbdullah/secure-suite-core.git"
-    source: git
-    version: "0.0.1"
   core_storage:
     dependency: "direct main"
     description:
@@ -912,14 +903,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.9.0"
-  safe_device:
-    dependency: transitive
-    description:
-      name: safe_device
-      sha256: b55e216e6b8368807e5bc193825fb566ced5571d56ef7b11dac90224c4d839b2
-      url: "https://pub.dev"
-    source: hosted
-    version: "1.4.0"
   share_plus:
     dependency: "direct main"
     description:

@@ -1,13 +1,12 @@
 import 'dart:async';
 
-import 'package:core_security/core_security.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:reflect/src/features/auth/providers/auth_providers.dart';
 import 'package:reflect/src/features/settings/providers/settings_providers.dart';
 
-/// Locks the session when the app is backgrounded (via core_security's
-/// [LifecycleSecurityService]) or after a period of user inactivity.
+/// Locks the session when the app is backgrounded or after a period of user
+/// inactivity.
 /// Any pointer event resets the inactivity timer.
 class InactivityLocker extends ConsumerStatefulWidget {
   const InactivityLocker({required this.child, super.key});
@@ -18,22 +17,29 @@ class InactivityLocker extends ConsumerStatefulWidget {
   ConsumerState<InactivityLocker> createState() => _InactivityLockerState();
 }
 
-class _InactivityLockerState extends ConsumerState<InactivityLocker> {
-  late final LifecycleSecurityService _lifecycle;
+class _InactivityLockerState extends ConsumerState<InactivityLocker>
+    with WidgetsBindingObserver {
   Timer? _inactivityTimer;
 
   @override
   void initState() {
     super.initState();
-    _lifecycle = LifecycleSecurityService(onLockRequested: _lock);
-    _lifecycle.attach();
+    WidgetsBinding.instance.addObserver(this);
   }
 
   @override
   void dispose() {
     _inactivityTimer?.cancel();
-    _lifecycle.detach();
+    WidgetsBinding.instance.removeObserver(this);
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.detached) {
+      _lock();
+    }
   }
 
   void _lock() {

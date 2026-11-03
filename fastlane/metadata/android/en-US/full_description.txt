@@ -1,0 +1,28 @@
+Reflect is a quiet place to write, remember and notice patterns over time. Every entry is encrypted on your device and unlocked only by you. There is no account, no server, no analytics and no ads.
+
+WRITE FREELY
+- Simple, distraction-free entries with an optional title and mood.
+- Full Markdown formatting: headings, bold, italics, lists, task lists, blockquotes, code, links and rules.
+- A gentle daily reminder and rotating writing prompts.
+
+REMEMBER MORE
+- Encrypted photo attachments from your gallery or camera.
+- Full-text search across everything you have written.
+- Calendar view, tags and an "On This Day" look back.
+
+SEE YOUR PATTERNS
+- Mood trends, distributions and writing streaks.
+- Writing goals to build the habit.
+- Export a Year-in-Review PDF with your entries, mood emoji and photos.
+
+LOCKED DOWN
+- Your journal is unlocked with a password, with optional biometric unlock, and locks automatically when you leave the app.
+- Your data key is derived from your password with Argon2id and entries and photos are encrypted with AES-256-GCM.
+- Encrypted backup and restore: a passphrase-protected file you control.
+
+PERMISSIONS, IN PLAIN WORDS
+- Notifications: to show the optional daily writing reminder. A boot-completed permission lets Android restore that reminder after a restart.
+- Biometrics: only for the optional fingerprint / face unlock.
+- Reflect does not ask for contacts, location or microphone. The store build declares no network permission.
+
+Free and open source under the MIT license.

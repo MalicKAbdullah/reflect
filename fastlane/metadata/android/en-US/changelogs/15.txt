@@ -1,0 +1,1 @@
+Aligned the Stats goal cards and tidied the Settings spacing. Recent releases also added a new lock screen and an Appearance setting (System, Light or Dark).
