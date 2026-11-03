@@ -1,6 +1,6 @@
 name: reflect
 description: Reflect — an encrypted, offline-first journal with full-text search and mood analytics.
-version: 1.12.0+15
+version: 1.13.0+16
 publish_to: none
 
 environment:
@@ -56,37 +56,37 @@ dependencies:
     git:
       url: https://github.com/MalicKAbdullah/secure-suite-core.git
       path: core_crypto
-      ref: 3e90d1221ef1e4010748944c83459df13d18c205
+      ref: be869646b86d9654a83fe8194d69d9acbe28fd7d
   core_storage:
     git:
       url: https://github.com/MalicKAbdullah/secure-suite-core.git
       path: core_storage
-      ref: 3e90d1221ef1e4010748944c83459df13d18c205
+      ref: be869646b86d9654a83fe8194d69d9acbe28fd7d
   core_theme:
     git:
       url: https://github.com/MalicKAbdullah/secure-suite-core.git
       path: core_theme
-      ref: 3e90d1221ef1e4010748944c83459df13d18c205
+      ref: be869646b86d9654a83fe8194d69d9acbe28fd7d
   core_ui:
     git:
       url: https://github.com/MalicKAbdullah/secure-suite-core.git
       path: core_ui
-      ref: 3e90d1221ef1e4010748944c83459df13d18c205
+      ref: be869646b86d9654a83fe8194d69d9acbe28fd7d
   core_backup:
     git:
       url: https://github.com/MalicKAbdullah/secure-suite-core.git
       path: core_backup
-      ref: 3e90d1221ef1e4010748944c83459df13d18c205
+      ref: be869646b86d9654a83fe8194d69d9acbe28fd7d
   core_lock:
     git:
       url: https://github.com/MalicKAbdullah/secure-suite-core.git
       path: core_lock
-      ref: 3e90d1221ef1e4010748944c83459df13d18c205
+      ref: be869646b86d9654a83fe8194d69d9acbe28fd7d
   core_update:
     git:
       url: https://github.com/MalicKAbdullah/secure-suite-core.git
       path: core_update
-      ref: 3e90d1221ef1e4010748944c83459df13d18c205
+      ref: be869646b86d9654a83fe8194d69d9acbe28fd7d
 dev_dependencies:
   flutter_test:
     sdk: flutter
