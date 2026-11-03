@@ -11,6 +11,7 @@ import 'package:go_router/go_router.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:reflect/src/core/app_info.dart';
 import 'package:reflect/src/core/router/app_router.dart';
+import 'package:reflect/src/core/store_build.dart';
 import 'package:reflect/src/features/auth/providers/auth_providers.dart';
 import 'package:reflect/src/features/auth/widgets/confirm_owner.dart';
 import 'package:reflect/src/features/auth/providers/biometric_providers.dart';
@@ -105,9 +106,11 @@ class SettingsScreen extends ConsumerWidget {
               ],
             ),
             const SizedBox(height: AppSpacing.md),
-            const SectionHeader(title: 'Updates'),
-            const _UpdateSection(),
-            const SizedBox(height: AppSpacing.md),
+            if (!kStoreBuild) ...[
+              const SectionHeader(title: 'Updates'),
+              const _UpdateSection(),
+              const SizedBox(height: AppSpacing.md),
+            ],
             const SectionHeader(title: 'Journal'),
             RowGroup(
               children: [

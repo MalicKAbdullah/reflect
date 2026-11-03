@@ -1,6 +1,7 @@
 import 'package:core_theme/core_theme.dart';
 import 'package:core_ui/core_ui.dart';
 import 'package:core_update/core_update.dart';
+import 'package:reflect/src/core/store_build.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -79,7 +80,7 @@ class TimelineScreen extends ConsumerWidget {
             final updateDismissed = ref.watch(updateDismissedProvider);
             final leading = <Widget>[
               header,
-              if (update != null && !updateDismissed)
+              if (!kStoreBuild && update != null && !updateDismissed)
                 Padding(
                   padding: const EdgeInsets.only(bottom: AppSpacing.smd),
                   child: UpdateBanner(

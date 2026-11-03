@@ -64,6 +64,8 @@ jobs:
 
       - name: Build signed APKs
         run: |
+          flutter build apk --release --dart-define=OFFLYNE_STORE=fdroid
+          cp build/app/outputs/flutter-apk/app-release.apk build/store.apk
           flutter build apk --release
           flutter build apk --release --split-per-abi
 
@@ -76,6 +78,7 @@ jobs:
           fi
           [ -z "$VER" ] && VER="dev"
           mkdir -p dist
+          cp build/store.apk "dist/${APP}-${VER}-store.apk"
           cp build/app/outputs/flutter-apk/app-release.apk "dist/${APP}-${VER}-universal.apk"
           for abi in arm64-v8a armeabi-v7a x86_64; do
             f="build/app/outputs/flutter-apk/app-${abi}-release.apk"
@@ -112,4 +115,4 @@ jobs:
           body: |
             Signed release build of **${{ github.event.repository.name }}** — part of the [Secure Suite](https://github.com/MalicKAbdullah/secure-suite-core).
 
-            Download the `arm64-v8a` APK for most modern phones, or the `universal` APK if unsure.
+            Download the `arm64-v8a` APK for most modern phones, or the `universal` APK if unsure. The `store` APK is the F-Droid / IzzyOnDroid build (no in-app update check).
