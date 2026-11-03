@@ -90,6 +90,21 @@ flutter analyze
 flutter test
 ```
 
+## 🏬 Store builds (F-Droid / IzzyOnDroid)
+
+F-Droid and IzzyOnDroid deliver updates themselves, so their build is made with a
+compile-time flag:
+
+```sh
+flutter build apk --release --dart-define=OFFLYNE_STORE=fdroid
+```
+
+With `OFFLYNE_STORE=fdroid` Reflect removes the **Check for updates** row in Settings,
+the home **update banner**, and every automatic update request. Without the flag
+(the default, and what the GitHub Release APKs use) the in-app updater is on.
+Fastlane listing text and screenshots live in
+[`fastlane/metadata/android/en-US`](fastlane/metadata/android/en-US).
+
 ## 🧱 Built With
 
 - **Flutter** & **Dart** — one codebase, Android & iOS
