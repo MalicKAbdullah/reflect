@@ -1,0 +1,1 @@
+Private, offline encrypted journal with search, mood stats and reminders
